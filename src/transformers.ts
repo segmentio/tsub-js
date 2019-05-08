@@ -1,5 +1,5 @@
 import { Transformer } from './store'
-import * as MD5 from 'crypto-js/md5'
+import * as MD5 from 'js-md5'
 import * as ldexp from 'math-float64-ldexp'
 
 export interface TransformerConfig {
@@ -122,7 +122,7 @@ function samplePercent(percent: number): boolean {
 // Since AJS supports IE9+ (typed arrays were introduced in IE10) we're doing some manual array math.
 function sampleConsistentPercent(payload: any, config: TransformerConfig): boolean {
     const field = getFieldFromKey(payload, config.sample.path)
-    const digest: number[] = MD5(JSON.stringify(field))
+    const digest: number[] = MD5.digest(JSON.stringify(field))
     let exponent = -64
 
     // Manually maintain 64-bit int as an array.
