@@ -1,0 +1,48 @@
+{
+  "name": "@segmentio/tsub",
+  "version": "0.0.1",
+  "description": "Tsub for JS",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": "git+https://github.com/segmentio/tsub-js.git",
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/segmentio/tsub-js/issues"
+  },
+  "homepage": "https://github.com/segmentio/tsub-js#readme",
+  "dependencies": {
+    "@segment/fql": "^1.6.1",
+    "crypto-js": "^3.1.9-1",
+    "math-float64-ldexp": "^1.0.1"
+  },
+  "devDependencies": {
+    "tslint": "^5.16.0",
+    "tslint-config-prettier": "^1.18.0",
+    "typescript": "^3.4.5"
+  },
+  "prettier": {
+    "semi": false,
+    "singleQuote": true,
+    "printWidth": 100
+  },
+  "lint-staged": {
+    "linters": {
+      "*.ts": [
+        "yarn lint",
+        "prettier --write",
+        "git add"
+      ],
+      "*.json": [
+        "prettier --write",
+        "git add"
+      ]
+    },
+    "ignore": [
+      "examples/**/generated/**",
+      "**/__snapshots__/**"
+    ]
+  }
+}
