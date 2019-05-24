@@ -2,9 +2,13 @@
   "name": "@segmentio/tsub",
   "version": "0.0.1",
   "description": "Tsub for JS",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "browser": "dist/index.js",
+  "bin": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest",
+    "build": "rm -rf dist && tsc",
+    "lint": "tslint src/**/*.ts"
   },
   "repository": "git+https://github.com/segmentio/tsub-js.git",
   "author": "",
@@ -19,6 +23,9 @@
     "math-float64-ldexp": "^1.0.1"
   },
   "devDependencies": {
+    "@types/jest": "^24.0.13",
+    "jest": "^24.8.0",
+    "ts-jest": "^24.0.2",
     "tslint": "^5.16.0",
     "tslint-config-prettier": "^1.18.0",
     "typescript": "^3.4.5"

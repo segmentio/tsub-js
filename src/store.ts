@@ -21,12 +21,12 @@ export interface Target {
 
 export interface Matcher {
     type: string
-    config: string // TODO: JSON IR representation
+    ir: string
 }
 
 export interface Transformer {
     type: string
-    config: string
+    config: string // As valid JSON
 }
 
 export class Store {

@@ -122,6 +122,8 @@ function samplePercent(percent: number): boolean {
 // Since AJS supports IE9+ (typed arrays were introduced in IE10) we're doing some manual array math.
 function sampleConsistentPercent(payload: any, config: TransformerConfig): boolean {
     const field = getFieldFromKey(payload, config.sample.path)
+
+    // Operate off of JSON bytes. TODO: Validate all type behavior, esp. strings.
     const digest: number[] = MD5.digest(JSON.stringify(field))
     let exponent = -64
 
@@ -150,7 +152,8 @@ function sampleConsistentPercent(payload: any, config: TransformerConfig): boole
         significand.splice(0, leadingZeros)
 
         // Right-shift val by 64 minus leading zeros and push into significand.
-        significand = significand.concat(val.splice(64 - leadingZeros))
+        val.splice(64 - leadingZeros)
+        significand = significand.concat(val)
     }
 
     // Flip 64th bit
@@ -176,7 +179,8 @@ function consumeDigest(digest: number[], arr: number[]) {
 }
 
 // Keys in destination filters are split by periods (other incidental periods are not allowed)
-function getFieldFromKey(payload: any, key: string): any {
+// TODO: Replace with lodash.get()?
+export function getFieldFromKey(payload: any, key: string): any {
     const splitKey = key.split('.')
     let val = payload
     for (const k of splitKey) {
