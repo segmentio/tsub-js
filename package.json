@@ -20,6 +20,7 @@
   "dependencies": {
     "@segment/fql": "^1.6.1",
     "js-md5": "^0.7.3",
+    "lodash.get": "^4.4.2",
     "math-float64-ldexp": "^1.0.1"
   },
   "devDependencies": {

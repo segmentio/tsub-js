@@ -1,10 +1,12 @@
 import { Transformer } from './store'
 import * as MD5 from 'js-md5'
 import * as ldexp from 'math-float64-ldexp'
+import * as get from 'lodash.get'
 
 export interface TransformerConfig {
-    drop: Map<string, string[]>
-    sample: TransformerConfigSample
+    allow?: Map<string, string[]>
+    drop?: Map<string, string[]>
+    sample?: TransformerConfigSample
 }
 
 export interface TransformerConfigSample {
@@ -20,7 +22,7 @@ export function transform(payload: any, transformers: Transformer[]): any {
         try {
             config = JSON.parse(transformer.config)
         } catch (e) {
-            return new Error(`Failed to JSON.parse transformer config "${transformer.config}": ${e}`)
+            throw new Error(`Failed to JSON.parse transformer config "${transformer.config}": ${e}`)
         }
 
         switch (transformer.type) {
@@ -38,7 +40,7 @@ export function transform(payload: any, transformers: Transformer[]): any {
                 }
                 return null
             default:
-                return new Error(`Transformer of type "${transformer.type}" is unsupported.`)
+                throw new Error(`Transformer of type "${transformer.type}" is unsupported.`)
         }
     }
 
@@ -52,7 +54,10 @@ function dropProperties(payload: any, config: TransformerConfig) {
             continue
         }
 
-        const field = getFieldFromKey(payload, key)
+        // If key is empty, it refers to the top-level object.
+        const field = key === '' ? payload : get(payload, key)
+
+        // Can only drop props off of arrays and objects.
         if (typeof field !== 'object' || field === null) {
             continue
         }
@@ -66,12 +71,15 @@ function dropProperties(payload: any, config: TransformerConfig) {
 // allowProperties ONLY allows the specific targets within the keys. (e.g. "a.foo": ["bar", "baz"]
 // on {a: {foo: {bar: 1, baz: 2}, other: 3}} will not have any drops, as it only looks inside a.foo
 function allowProperties(payload: any, config: TransformerConfig) {
-    for (const key in config.drop) {
-        if (!config.drop.hasOwnProperty(key)) {
+    for (const key in config.allow) {
+        if (!config.allow.hasOwnProperty(key)) {
             continue
         }
 
-        const field = getFieldFromKey(payload, key)
+        // If key is empty, it refers to the top-level object.
+        const field = key === '' ? payload : get(payload, key)
+
+        // Can only drop props off of arrays and objects.
         if (typeof field !== 'object' || field === null) {
             continue
         }
@@ -83,7 +91,7 @@ function allowProperties(payload: any, config: TransformerConfig) {
                 continue
             }
 
-            if (config.drop[key].indexOf(k) !== -1) {
+            if (config.allow[key].indexOf(k) === -1) {
                 delete field[k]
             }
         }
@@ -121,7 +129,7 @@ function samplePercent(percent: number): boolean {
 
 // Since AJS supports IE9+ (typed arrays were introduced in IE10) we're doing some manual array math.
 function sampleConsistentPercent(payload: any, config: TransformerConfig): boolean {
-    const field = getFieldFromKey(payload, config.sample.path)
+    const field = get(payload, config.sample.path)
 
     // Operate off of JSON bytes. TODO: Validate all type behavior, esp. strings.
     const digest: number[] = MD5.digest(JSON.stringify(field))
@@ -177,16 +185,3 @@ function consumeDigest(digest: number[], arr: number[]) {
         }
     }
 }
-
-// Keys in destination filters are split by periods (other incidental periods are not allowed)
-// TODO: Replace with lodash.get()?
-export function getFieldFromKey(payload: any, key: string): any {
-    const splitKey = key.split('.')
-    let val = payload
-    for (const k of splitKey) {
-        val = val[k]
-    }
-
-    return val
-}
-

@@ -1,5 +1,5 @@
 import * as Store from './store'
-import * as Transformers from './transformers'
+import * as get from 'lodash.get'
 
 export function matches(matcher: Store.Matcher, event): boolean {
     switch (matcher.type) {
@@ -119,7 +119,7 @@ function getValue(item, event) {
     }
 
     // Otherwise, it's an event path, e.g. "properties.email"
-    return Transformers.getFieldFromKey(event, item)
+    return get(event, item)
 }
 
 function compareNumbers(first, second, operator, event): boolean {

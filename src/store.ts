@@ -40,20 +40,18 @@ export class Store {
         }
     }
 
-    public getRulesByTargets(scope: Rule['scope'], targets: Array<Rule['target']>): Rule[] {
+    public getRulesByScope(scope: Rule['scope']): Rule[] {
         const rules: Rule[] = []
-        for (const target of targets) {
             for (const id in this.rules) {
                 if (!this.rules.hasOwnProperty(id)) {
                     continue
                 }
 
                 const rule = this.rules[id]
-                if (rule.scope === scope && rule.target.id === target.id && rule.target.label === target.label) {
+                if (rule.scope === scope) {
                     rules.push(rule)
                 }
             }
-        }
 
         return rules.sort(sortRules)
     }
