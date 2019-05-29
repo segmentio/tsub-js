@@ -2,16 +2,26 @@ import { Transformer } from './store'
 import * as MD5 from 'js-md5'
 import * as ldexp from 'math-float64-ldexp'
 import * as get from 'lodash.get'
+import * as set from 'lodash.set'
+import * as unset from 'lodash.unset'
 
 export interface TransformerConfig {
     allow?: Map<string, string[]>
     drop?: Map<string, string[]>
     sample?: TransformerConfigSample
+    map?: Map<string, TransformerConfigMap>
 }
 
 export interface TransformerConfigSample {
     percent: number
     path: string
+}
+
+export interface TransformerConfigMap {
+    set?: any
+    copy?: string
+    move?: string
+    to_string?: boolean
 }
 
 export function transform(payload: any, transformers: Transformer[]): any {
@@ -39,6 +49,9 @@ export function transform(payload: any, transformers: Transformer[]): any {
                     break
                 }
                 return null
+            case 'map_properties':
+                mapProperties(transformedPayload, config)
+                break
             default:
                 throw new Error(`Transformer of type "${transformer.type}" is unsupported.`)
         }
@@ -98,6 +111,49 @@ function allowProperties(payload: any, config: TransformerConfig) {
     }
 }
 
+function mapProperties(payload: any, config: TransformerConfig) {
+    for (const key in config.map) {
+        if (!config.map.hasOwnProperty(key)) {
+            continue
+        }
+
+        const actionMap: TransformerConfigMap = config.map[key]
+
+        // Can't manipulate non-objects.
+        if (typeof get(payload, key) !== 'object') {
+            continue
+        }
+
+        // These actions are exclusive to each other.
+        if (actionMap.copy) {
+            const valueToCopy = get(payload, actionMap.copy)
+            if (valueToCopy !== undefined) {
+                set(payload, key, valueToCopy)
+            }
+        }
+        else if (actionMap.move) {
+            const valueToMove = get(payload, actionMap.move)
+            if (valueToMove !== undefined) {
+                set(payload, key, valueToMove)
+            }
+
+            unset(payload, actionMap.move)
+        }
+        else if (actionMap.set) {
+            set(payload, key, actionMap.set)
+        }
+
+        // to_string is not exclusive and can be paired with other actions. Final action.
+        if (actionMap.to_string) {
+            // TODO: Check stringifier in Golang for parity.
+            const valueToString = get(payload, key)
+            if (valueToString !== undefined) {
+                set(payload, key, JSON.stringify(valueToString))
+            }
+        }
+    }
+}
+
 function sampleEvent(payload: any, config: TransformerConfig): boolean {
     if (config.sample.percent <= 0) {
         return false
@@ -128,6 +184,7 @@ function samplePercent(percent: number): boolean {
 // See: https://github.com/segmentio/sampler/blob/65cb04132305a04fcd4bcaef67d57fbe40c30241/sampler.go#L13-L38
 
 // Since AJS supports IE9+ (typed arrays were introduced in IE10) we're doing some manual array math.
+// This could be done directly with strings, but arrays are easier to reason about/have better function support.
 function sampleConsistentPercent(payload: any, config: TransformerConfig): boolean {
     const field = get(payload, config.sample.path)
 

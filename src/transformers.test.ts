@@ -226,7 +226,6 @@ describe('sample_event', () => {
     })
 
     test('sample_event returns the same result for any percent subset', () => {
-        // Comment to explain what I mean here:
         // If a given path:value returns true starting at 0.30, then it should continue to return true for 0.31
         // through 1. Thusly, a selection of 30% of values in a field will be a subset of a selection of 60%,
         // and so on.
