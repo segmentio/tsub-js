@@ -112,6 +112,14 @@ function allowProperties(payload: any, config: TransformerConfig) {
 }
 
 function mapProperties(payload: any, config: TransformerConfig) {
+    // Some configs might try to modify or read from a field multiple times. We will only ever read
+    // values as they were before any modifications began. Thus, if you try to override e.g.
+    // {a: {b: 1}} with set(a, 'b', 2) (which results in {a: {b: 2}}) and then try to copy a.b into
+    // a.c, you will get {a: {b: 2, c:1}} and NOT {a: {b:2, c:2}}. This prevents map evaluation
+    // order from mattering, and === what server-side does.
+    // See: https://github.com/segmentio/tsub/blob/661695a63b60b90471796e667458f076af788c19/transformers/map_properties.go#L179-L200
+    const initialPayload = JSON.parse(JSON.stringify(payload))
+
     for (const key in config.map) {
         if (!config.map.hasOwnProperty(key)) {
             continue
@@ -119,36 +127,56 @@ function mapProperties(payload: any, config: TransformerConfig) {
 
         const actionMap: TransformerConfigMap = config.map[key]
 
-        // Can't manipulate non-objects.
-        if (typeof get(payload, key) !== 'object') {
+        // Can't manipulate non-objects. Check that the parent is one. Strip the last .field
+        // from the string.
+        const splitKey = key.split('.')
+        let parent
+        if (splitKey.length > 1) {
+            splitKey.pop()
+            parent = get(initialPayload, splitKey.join('.'))
+        } else {
+            parent = payload
+        }
+
+        if (typeof parent !== 'object') {
             continue
         }
 
         // These actions are exclusive to each other.
         if (actionMap.copy) {
-            const valueToCopy = get(payload, actionMap.copy)
+            const valueToCopy = get(initialPayload, actionMap.copy)
             if (valueToCopy !== undefined) {
                 set(payload, key, valueToCopy)
             }
         }
         else if (actionMap.move) {
-            const valueToMove = get(payload, actionMap.move)
+            const valueToMove = get(initialPayload, actionMap.move)
             if (valueToMove !== undefined) {
                 set(payload, key, valueToMove)
             }
 
             unset(payload, actionMap.move)
         }
-        else if (actionMap.set) {
+        // Have to check only if property exists, as null, undefined, and other vals could be explicitly set.
+        else if (actionMap.hasOwnProperty('set')) {
             set(payload, key, actionMap.set)
         }
 
         // to_string is not exclusive and can be paired with other actions. Final action.
         if (actionMap.to_string) {
-            // TODO: Check stringifier in Golang for parity.
+
             const valueToString = get(payload, key)
+            if (typeof valueToString === 'string') {
+                // Don't encode the string again.
+                continue
+            }
+
+            // TODO: Check stringifier in Golang for parity.
             if (valueToString !== undefined) {
                 set(payload, key, JSON.stringify(valueToString))
+            } else {
+                // TODO: Check this behavior.
+                set(payload, key, 'undefined')
             }
         }
     }

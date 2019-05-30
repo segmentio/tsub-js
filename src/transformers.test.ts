@@ -225,7 +225,7 @@ describe('sample_event', () => {
         }
     })
 
-    test('sample_event returns the same result for any percent subset', () => {
+    test('sample_event returns the same result for a given path:value for any percent subset', () => {
         // If a given path:value returns true starting at 0.30, then it should continue to return true for 0.31
         // through 1. Thusly, a selection of 30% of values in a field will be a subset of a selection of 60%,
         // and so on.
@@ -247,5 +247,141 @@ describe('sample_event', () => {
                 }
             }
         }
+    })
+})
+
+describe('map_properties', () => {
+    beforeEach(() => {
+        transformer.type = 'map_properties'
+        transformer.config = `{"map": {
+            "mapMe": {"set": true}
+        }}`
+    })
+
+    test('map_properties should mutate the input object', () => {
+        Transformers.transform(simpleEvent, [transformer])
+        expect(simpleEvent.mapMe === true)
+    })
+
+    test('map_properties can copy fields from one place to another without deleting the origin', () => {
+        simpleEvent.copyMe = 'Beam me up, Scotty!'
+        transformer.config = `{"map": {
+            "mapMe": {"copy": "copyMe"}
+        }}`
+
+        Transformers.transform(simpleEvent, [transformer])
+        expect(simpleEvent.mapMe).toBe('Beam me up, Scotty!')
+        expect(simpleEvent.copyMe).toBe('Beam me up, Scotty!')
+    })
+
+    test('map_properties does not copy if there is no field to copy', () => {
+        transformer.config = `{"map": {
+            "mapMe": {"copy": "copyMe"}
+        }}`
+
+        Transformers.transform(simpleEvent, [transformer])
+        expect(simpleEvent.mapMe).toBeUndefined()
+        expect(simpleEvent.copyMe).toBeUndefined()
+    })
+
+    test('map_properties can move fields from one place to another and delete the origin', () => {
+        simpleEvent.moveMe = 'I like to move it, move it...'
+        transformer.config = `{"map": {
+            "mapMe": {"move": "moveMe"}
+        }}`
+
+        Transformers.transform(simpleEvent, [transformer])
+        expect(simpleEvent.mapMe).toBe('I like to move it, move it...')
+        expect(simpleEvent.moveMe).toBeUndefined()
+    })
+
+    test('map_properties does not move if there is no field to move', () => {
+        transformer.config = `{"map": {
+            "mapMe": {"move": "moveMe"}
+        }}`
+
+        Transformers.transform(simpleEvent, [transformer])
+        expect(simpleEvent.mapMe).toBeUndefined()
+        expect(simpleEvent.moveMe).toBeUndefined()
+    })
+
+    test('map_properties can set fields that are not yet set', () => {
+        transformer.config = `{"map": {
+            "mapMe": {"set": "Someone set us up the bomb"}
+        }}`
+
+        Transformers.transform(simpleEvent, [transformer])
+        expect(simpleEvent.mapMe).toBe('Someone set us up the bomb')
+    })
+
+    test('map_properties can set fields that are already set', () => {
+        simpleEvent.mapMe = 'This is not the message you are looking for'
+        transformer.config = `{"map": {
+            "mapMe": {"set": "Someone set us up the bomb"}
+        }}`
+
+        Transformers.transform(simpleEvent, [transformer])
+        expect(simpleEvent.mapMe).toBe('Someone set us up the bomb')
+    })
+
+    test('map_properties can set falsey values', () => {
+        transformer.config = `{"map": {
+            "mapMe": {"set": null}
+        }}`
+
+        Transformers.transform(simpleEvent, [transformer])
+        expect(simpleEvent.mapMe).toBeNull()
+
+        transformer.config = `{"map": {
+            "mapMe": {"set": false}
+        }}`
+        Transformers.transform(simpleEvent, [transformer])
+        expect(simpleEvent.mapMe).toBe(false)
+
+        transformer.config = `{"map": {
+            "mapMe": {"set": 0}
+        }}`
+        Transformers.transform(simpleEvent, [transformer])
+        expect(simpleEvent.mapMe).toBe(0)
+
+        transformer.config = `{"map": {
+            "mapMe": {"set": []}
+        }}`
+        Transformers.transform(simpleEvent, [transformer])
+        expect(simpleEvent.mapMe).toStrictEqual([])
+    })
+
+    test('map_properties can convert values to strings', () => {
+        transformer.config = `{"map": {
+            "mapMe": {"to_string": true}
+        }}`
+
+        simpleEvent.mapMe = 1234
+        Transformers.transform(simpleEvent, [transformer])
+        expect(simpleEvent.mapMe).toBe('1234')
+
+        simpleEvent.mapMe = null
+        Transformers.transform(simpleEvent, [transformer])
+        expect(simpleEvent.mapMe).toBe('null')
+
+        simpleEvent.mapMe = []
+        Transformers.transform(simpleEvent, [transformer])
+        expect(simpleEvent.mapMe).toBe('[]')
+
+        simpleEvent.mapMe = undefined
+        Transformers.transform(simpleEvent, [transformer])
+        expect(simpleEvent.mapMe).toBe('undefined')
+
+        simpleEvent.mapMe = {foo: 'bar'}
+        Transformers.transform(simpleEvent, [transformer])
+        expect(simpleEvent.mapMe).toBe('{"foo":"bar"}')
+
+        simpleEvent.mapMe = 'already a string'
+        Transformers.transform(simpleEvent, [transformer])
+        expect(simpleEvent.mapMe).toBe('already a string')
+
+        simpleEvent.mapMe = false
+        Transformers.transform(simpleEvent, [transformer])
+        expect(simpleEvent.mapMe).toBe('false')
     })
 })
