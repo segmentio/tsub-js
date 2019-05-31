@@ -1,15 +1,30 @@
 import * as Store from './store'
 import * as get from 'lodash.get'
 
-export function matches(matcher: Store.Matcher, event): boolean {
-    switch (matcher.type) {
-        case 'all':
-            return all()
-        case 'fql':
-            return fql(matcher.ir, event)
-        default:
-            throw new Error(`Matcher of type ${matcher.type} unsupported.`)
+export default function matches(matchers: Store.Matcher[], event): boolean {
+    if (matchers.length === 0) {
+        throw new Error('No matchers supplied!')
     }
+
+    // If any evaluate to false, early return
+    for (const matcher of matchers) {
+        switch (matcher.type) {
+            case 'all':
+                if (!all()) {
+                    return false
+                }
+                break
+            case 'fql':
+                if (!fql(matcher.ir, event)) {
+                    return false
+                }
+                break
+            default:
+                throw new Error(`Matcher of type ${matcher.type} unsupported.`)
+        }
+    }
+
+    return true
 }
 
 function all(): boolean {
@@ -191,12 +206,15 @@ function contains(first, second): boolean {
         return false
     }
 
-
-
     return first.indexOf(second) !== -1
 }
 
 function length(item) {
+    // Match server-side behavior.
+    if (item === null) {
+        return 0
+    }
+
     // Type-check to avoid returning .length of an object
     if (!Array.isArray(item) && typeof item !== 'string') {
         return NaN
@@ -208,6 +226,7 @@ function length(item) {
 // This is a heuristic technically speaking, but should be close enough. The odds of someone trying to test
 // a func with identical IR notation is pretty low.
 function isIR(value): boolean {
+    // TODO: This can be better checked by checking if this is a {"value": THIS}
     if (!Array.isArray(value)) {
         return false
     }

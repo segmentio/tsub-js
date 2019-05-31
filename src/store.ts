@@ -1,22 +1,11 @@
-// import stuff
+import { TransformerConfig } from './transformers'
 
 export interface Rule {
-    id: string
     scope: string
-    target: Target
-    matcher: Matcher
-    transformers: Transformer[]
-    name: string
-    description: string
-    priority: number
-    enabled: boolean
-    createdAt: Date
-    updatedAt: Date
-}
-
-export interface Target {
-    label: string
-    id: string
+    target_type: string
+    matchers: Matcher[]
+    transformers: Transformer[][]
+    destinationName?: string
 }
 
 export interface Matcher {
@@ -26,59 +15,25 @@ export interface Matcher {
 
 export interface Transformer {
     type: string
-    config: string // As valid JSON
+    config?: TransformerConfig
 }
 
-export class Store {
-    private readonly rules = {}
+export default class Store {
+    private readonly rules = []
 
     constructor(rules?: Rule[]) {
-        if (rules) {
-            for (const rule of rules) {
-                this.rules[rule.id] = rule
-            }
-        }
+        this.rules = rules || []
     }
 
-    public getRulesByScope(scope: Rule['scope']): Rule[] {
+    public getRulesByDestinationName(destinationName: string): Rule[] {
         const rules: Rule[] = []
-            for (const id in this.rules) {
-                if (!this.rules.hasOwnProperty(id)) {
-                    continue
-                }
-
-                const rule = this.rules[id]
-                if (rule.scope === scope) {
+            for (const rule of this.rules) {
+                // Rules with no destinationName are global (workspace || workspace::source
+                if (rule.destinationName === destinationName || rule.destinationName === undefined) {
                     rules.push(rule)
                 }
             }
 
-        return rules.sort(sortRules)
+        return rules
     }
-}
-
-function sortRules(a: Rule, b: Rule): number {
-    // First: Rules with higher priority always go first.
-    if (a.priority !== b.priority) {
-        return a.priority - b.priority
-    }
-
-    // Next: Rules without transforms go last.
-    if (a.transformers.length === 0) {
-        return -1
-    } else if (b.transformers.length === 0) {
-        return 1
-    }
-
-    // Next: Rules with 'preferential' transforms go first.
-    const aType = a.transformers[0].type
-    const bType = b.transformers[0].type
-    if (aType !== bType) {
-        // Lowest priority -> Highest priority (not in array = lowest priority, -1)
-        const transformPriority = ['whitelist_fields', 'blacklist_fields', 'drop_event']
-        return transformPriority.indexOf(aType) - transformPriority.indexOf(bType)
-    }
-
-    // Finally, sort by created timestamp.
-    return a.createdAt.getTime() - b.createdAt.getTime()
 }

@@ -24,33 +24,29 @@ export interface TransformerConfigMap {
     to_string?: boolean
 }
 
-export function transform(payload: any, transformers: Transformer[]): any {
+export default function transform(payload: any, transformers: Transformer[]): any {
     const transformedPayload: any = payload
 
     for (const transformer of transformers) {
-        let config: TransformerConfig
-        try {
-            config = JSON.parse(transformer.config)
-        } catch (e) {
-            throw new Error(`Failed to JSON.parse transformer config "${transformer.config}": ${e}`)
-        }
-
         switch (transformer.type) {
             case 'drop':
                 return null
             case 'drop_properties':
-                dropProperties(transformedPayload, config)
+                dropProperties(transformedPayload, transformer.config)
                 break
             case 'allow_properties':
-                allowProperties(transformedPayload, config)
+                allowProperties(transformedPayload, transformer.config)
                 break
             case 'sample_event':
-                if (sampleEvent(transformedPayload, config)) {
+                if (sampleEvent(transformedPayload, transformer.config)) {
                     break
                 }
                 return null
             case 'map_properties':
-                mapProperties(transformedPayload, config)
+                mapProperties(transformedPayload, transformer.config)
+                break
+            case 'hash_properties':
+                // Not yet supported, but don't throw an error. Just ignore.
                 break
             default:
                 throw new Error(`Transformer of type "${transformer.type}" is unsupported.`)
@@ -164,10 +160,10 @@ function mapProperties(payload: any, config: TransformerConfig) {
 
         // to_string is not exclusive and can be paired with other actions. Final action.
         if (actionMap.to_string) {
-
             const valueToString = get(payload, key)
-            if (typeof valueToString === 'string') {
-                // Don't encode the string again.
+
+            // Do not string arrays and objects. Do not double-encode strings.
+            if (typeof valueToString === 'string' || (typeof valueToString === 'object' && valueToString !== null)) {
                 continue
             }
 

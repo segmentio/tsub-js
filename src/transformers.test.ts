@@ -1,5 +1,5 @@
 import * as Store from './store'
-import * as Transformers from './transformers'
+import transform from './transformers'
 
 import * as simple from '../fixtures/simple.json'
 import * as many from '../fixtures/manyProperties.json'
@@ -20,31 +20,26 @@ beforeEach(() => {
 
 describe('error handling and basic checks', () => {
     test('throws an error on an invalid transform type', () => {
-        transformer.config = '{}'
+        transformer.config = {}
         transformer.type = 'not_a_transform'
 
-        expect(() => { Transformers.transform({}, [transformer]) }).toThrow()
-    })
-
-    test('throws an error if unparsable config is supplied', () => {
-        transformer.config = '{{{{{{'
-        expect(() => { Transformers.transform({}, [transformer]) }).toThrow()
+        expect(() => { transform({}, [transformer]) }).toThrow()
     })
 
     test('throws an error if config is null and type is not drop', () => {
         transformer.type = 'drop_properties'
-        expect(() => { Transformers.transform({}, [transformer]) }).toThrow()
+        expect(() => { transform({}, [transformer]) }).toThrow()
 
         transformer.type = 'allow_properties'
-        expect(() => { Transformers.transform({}, [transformer]) }).toThrow()
+        expect(() => { transform({}, [transformer]) }).toThrow()
 
         transformer.type = 'sample_event'
-        expect(() => { Transformers.transform({}, [transformer]) }).toThrow()
+        expect(() => { transform({}, [transformer]) }).toThrow()
     })
 
     test('does not throw an error if config is null and type is drop', () => {
         // Using default transformer
-        expect(Transformers.transform({}, [transformer])).toBe(null)
+        expect(transform({}, [transformer])).toBe(null)
     })
 })
 
@@ -55,31 +50,31 @@ describe('drop', () => {
     })
 
     test('drop should return null to any payload', () => {
-        expect(Transformers.transform({}, [transformer])).toBe(null)
-        expect(Transformers.transform(simpleEvent, [transformer])).toBe(null)
-        expect(Transformers.transform(manyPropertiesEvent, [transformer])).toBe(null)
-        expect(Transformers.transform('I like cheese.', [transformer])).toBe(null)
+        expect(transform({}, [transformer])).toBe(null)
+        expect(transform(simpleEvent, [transformer])).toBe(null)
+        expect(transform(manyPropertiesEvent, [transformer])).toBe(null)
+        expect(transform('I like cheese.', [transformer])).toBe(null)
     })
 })
 
 describe('drop_properties', () => {
     beforeEach(() => {
         transformer.type = 'drop_properties'
-        transformer.config = `{"drop": {"properties": ["email", "phoneNumber"]}}`
+        transformer.config = {'drop': {'properties': ['email', 'phoneNumber']}}
     })
 
     test('drop_properties should mutate the input object', () => {
         simpleEvent.properties.phoneNumber = '867-5309'
-        Transformers.transform(simpleEvent, [transformer])
+        transform(simpleEvent, [transformer])
 
         expect(simpleEvent.properties.phoneNumber).toBeUndefined()
     })
 
     test('drop_properties should drop top-level fields', () => {
         simpleEvent.someTopLevelField = 'test'
-        transformer.config = `{"drop": {"": ["someTopLevelField"]}}`
+        transformer.config = {'drop': {'': ['someTopLevelField']}}
 
-        Transformers.transform(simpleEvent, [transformer])
+        transform(simpleEvent, [transformer])
         expect(simpleEvent.someTopLevelField).toBeUndefined()
     })
 
@@ -93,9 +88,9 @@ describe('drop_properties', () => {
                 }
             }
         }
-        transformer.config = `{"drop": {"nest1.nest2.nest3.nest4": ["nest5"]}}`
+        transformer.config = {'drop': {'nest1.nest2.nest3.nest4': ['nest5']}}
 
-        Transformers.transform(simpleEvent, [transformer])
+        transform(simpleEvent, [transformer])
         expect(simpleEvent.nest1.nest2.nest3.nest4.nest5).toBeUndefined()
     })
 
@@ -109,9 +104,9 @@ describe('drop_properties', () => {
                 }
             }
         }
-        transformer.config = `{"drop": {"nest1.nest2.nest3.nest4": ["nest5"]}}`
+        transformer.config = {'drop': {'nest1.nest2.nest3.nest4': ['nest5']}}
 
-        Transformers.transform(manyPropertiesEvent, [transformer])
+        transform(manyPropertiesEvent, [transformer])
         expect(manyPropertiesEvent.nest1.nest2.nest3.nest4.nest5).toBeUndefined()
     }, 500)
 })
@@ -119,23 +114,23 @@ describe('drop_properties', () => {
 describe('allow_properties', () => {
     beforeEach(() => {
         transformer.type = 'allow_properties'
-        transformer.config = `{"allow": {"properties": ["email"]}}`
+        transformer.config = {'allow': {'properties': ['email']}}
     })
 
     test('allow_properties should mutate the input object', () => {
         simpleEvent.properties.phoneNumber = '867-5309'
 
-        Transformers.transform(simpleEvent, [transformer])
+        transform(simpleEvent, [transformer])
         expect(simpleEvent.properties.phoneNumber).toBeUndefined()
     })
 
     test('allow_properties should work on the top-level object (ill-advised as it is)', () => {
         simpleEvent.onlyAllowedProp = 'test'
-        transformer.config = `{"allow": {"": ["onlyAllowedProp"]}}`
+        transformer.config = {'allow': {'': ['onlyAllowedProp']}}
         expect(Object.keys(simpleEvent).length > 1)
 
 
-        Transformers.transform(simpleEvent, [transformer])
+        transform(simpleEvent, [transformer])
         expect(simpleEvent).toStrictEqual({onlyAllowedProp: 'test'})
     })
 
@@ -150,10 +145,10 @@ describe('allow_properties', () => {
                 }
             }
         }
-        transformer.config = `{"allow": {"nest1.nest2.nest3.nest4": ["nest5"]}}`
+        transformer.config = {'allow': {'nest1.nest2.nest3.nest4': ['nest5']}}
         const originalPropCount = Object.keys(simpleEvent).length
 
-        Transformers.transform(simpleEvent, [transformer])
+        transform(simpleEvent, [transformer])
         expect(originalPropCount === Object.keys(simpleEvent).length)
         expect(simpleEvent.nest1.nest2.nest3.nest4).toStrictEqual({nest5: 'hai :3'})
     })
@@ -169,10 +164,10 @@ describe('allow_properties', () => {
                 }
             }
         }
-        transformer.config = `{"allow": {"nest1.nest2.nest3.nest4": ["nest5"]}}`
+        transformer.config = {'allow': {'nest1.nest2.nest3.nest4': ['nest5']}}
         const originalPropCount = Object.keys(manyPropertiesEvent).length
 
-        Transformers.transform(manyPropertiesEvent, [transformer])
+        transform(manyPropertiesEvent, [transformer])
         expect(originalPropCount === Object.keys(manyPropertiesEvent).length)
         expect(manyPropertiesEvent.nest1.nest2.nest3.nest4).toStrictEqual({nest5: 'hai :3'})
     }, 500)
@@ -181,7 +176,7 @@ describe('allow_properties', () => {
 describe('sample_event', () => {
     beforeEach(() => {
         transformer.type = 'sample_event'
-        transformer.config = `{"sample": {"percent": 0.0, "path": ""}}`
+        transformer.config = {'sample': {'percent': 0.0, 'path': ''}}
     })
 
     test('sample_event always returns false if percent is 0% or less', () => {
@@ -189,37 +184,37 @@ describe('sample_event', () => {
         for (let i = 0; i < 1000; i++) {
             simpleEvent = JSON.parse(JSON.stringify(simple))
 
-            const payload = Transformers.transform(simpleEvent, [transformer])
+            const payload = transform(simpleEvent, [transformer])
             expect(payload).toBeNull()
         }
     })
 
     test('sample_event always returns true if percent is 100% or more', () => {
-        transformer.config = `{"sample": {"percent": 1.01, "path": ""}}`
+        transformer.config = {'sample': {'percent': 1.01, 'path': ''}}
 
         for (let i = 0; i < 1000; i++) {
             simpleEvent = JSON.parse(JSON.stringify(simple))
 
-            const payload = Transformers.transform(simpleEvent, [transformer])
+            const payload = transform(simpleEvent, [transformer])
             expect(payload).toStrictEqual(simpleEvent)
         }
     })
 
     test('sample_event allows sampling based off a JSON path\'s value', () => {
-        transformer.config = `{"sample": {"percent": 0.50, "path": "propToSampleOffOf"}}`
+        transformer.config = {'sample': {'percent': 0.50, 'path': 'propToSampleOffOf'}}
         simpleEvent.propToSampleOffOf = 'abcd'
 
         // Check for no throw - value (null or unfiltered) isn't important in this test.
-        expect(Transformers.transform(simpleEvent, [transformer])).toBeDefined()
+        expect(transform(simpleEvent, [transformer])).toBeDefined()
     })
 
     test('sample_event returns the same result every time for a given path:value', () => {
-        transformer.config = `{"sample": {"percent": 0.50, "path": "propToSampleOffOf"}}`
+        transformer.config = {'sample': {'percent': 0.50, 'path': 'propToSampleOffOf'}}
         for (let i = 0; i < 100; i++) {
             simpleEvent.propToSampleOffOf = Math.random()
-            const firstResult = Transformers.transform(simpleEvent, [transformer])
+            const firstResult = transform(simpleEvent, [transformer])
             for (let j = 0; j < 100; j++) {
-                const repeatedResult = Transformers.transform(simpleEvent, [transformer])
+                const repeatedResult = transform(simpleEvent, [transformer])
                 expect(repeatedResult).toStrictEqual(firstResult)
             }
         }
@@ -236,8 +231,8 @@ describe('sample_event', () => {
             simpleEvent.propToSampleOffOf = Math.random()
             let hasBeenDefined = false
             for (let percent = 0; percent <= 1.01; percent += 0.01) {
-                transformer.config = `{"sample": {"percent": ${percent}, "path": "propToSampleOffOf"}}`
-                const result = Transformers.transform(simpleEvent, [transformer])
+                transformer.config = {'sample': {'percent': percent, 'path': 'propToSampleOffOf'}}
+                const result = transform(simpleEvent, [transformer])
                 if (hasBeenDefined) {
                     expect(result).toBeTruthy()
                 } else {
@@ -253,135 +248,135 @@ describe('sample_event', () => {
 describe('map_properties', () => {
     beforeEach(() => {
         transformer.type = 'map_properties'
-        transformer.config = `{"map": {
-            "mapMe": {"set": true}
-        }}`
+        transformer.config = {'map': {
+            'mapMe': {'set': true}
+        }}
     })
 
     test('map_properties should mutate the input object', () => {
-        Transformers.transform(simpleEvent, [transformer])
+        transform(simpleEvent, [transformer])
         expect(simpleEvent.mapMe === true)
     })
 
     test('map_properties can copy fields from one place to another without deleting the origin', () => {
         simpleEvent.copyMe = 'Beam me up, Scotty!'
-        transformer.config = `{"map": {
-            "mapMe": {"copy": "copyMe"}
-        }}`
+        transformer.config = {'map': {
+            'mapMe': {'copy': 'copyMe'}
+        }}
 
-        Transformers.transform(simpleEvent, [transformer])
+        transform(simpleEvent, [transformer])
         expect(simpleEvent.mapMe).toBe('Beam me up, Scotty!')
         expect(simpleEvent.copyMe).toBe('Beam me up, Scotty!')
     })
 
     test('map_properties does not copy if there is no field to copy', () => {
-        transformer.config = `{"map": {
-            "mapMe": {"copy": "copyMe"}
-        }}`
+        transformer.config = {'map': {
+            'mapMe': {'copy': 'copyMe'}
+        }}
 
-        Transformers.transform(simpleEvent, [transformer])
+        transform(simpleEvent, [transformer])
         expect(simpleEvent.mapMe).toBeUndefined()
         expect(simpleEvent.copyMe).toBeUndefined()
     })
 
     test('map_properties can move fields from one place to another and delete the origin', () => {
         simpleEvent.moveMe = 'I like to move it, move it...'
-        transformer.config = `{"map": {
-            "mapMe": {"move": "moveMe"}
-        }}`
+        transformer.config = {'map': {
+            'mapMe': {'move': 'moveMe'}
+        }}
 
-        Transformers.transform(simpleEvent, [transformer])
+        transform(simpleEvent, [transformer])
         expect(simpleEvent.mapMe).toBe('I like to move it, move it...')
         expect(simpleEvent.moveMe).toBeUndefined()
     })
 
     test('map_properties does not move if there is no field to move', () => {
-        transformer.config = `{"map": {
-            "mapMe": {"move": "moveMe"}
-        }}`
+        transformer.config = {'map': {
+            'mapMe': {'move': 'moveMe'}
+        }}
 
-        Transformers.transform(simpleEvent, [transformer])
+        transform(simpleEvent, [transformer])
         expect(simpleEvent.mapMe).toBeUndefined()
         expect(simpleEvent.moveMe).toBeUndefined()
     })
 
     test('map_properties can set fields that are not yet set', () => {
-        transformer.config = `{"map": {
-            "mapMe": {"set": "Someone set us up the bomb"}
-        }}`
+        transformer.config = {'map': {
+            'mapMe': {'set': 'Someone set us up the bomb'}
+        }}
 
-        Transformers.transform(simpleEvent, [transformer])
+        transform(simpleEvent, [transformer])
         expect(simpleEvent.mapMe).toBe('Someone set us up the bomb')
     })
 
     test('map_properties can set fields that are already set', () => {
         simpleEvent.mapMe = 'This is not the message you are looking for'
-        transformer.config = `{"map": {
-            "mapMe": {"set": "Someone set us up the bomb"}
-        }}`
+        transformer.config = {'map': {
+            'mapMe': {'set': 'Someone set us up the bomb'}
+        }}
 
-        Transformers.transform(simpleEvent, [transformer])
+        transform(simpleEvent, [transformer])
         expect(simpleEvent.mapMe).toBe('Someone set us up the bomb')
     })
 
     test('map_properties can set falsey values', () => {
-        transformer.config = `{"map": {
-            "mapMe": {"set": null}
-        }}`
+        transformer.config = {'map': {
+            'mapMe': {'set': null}
+        }}
 
-        Transformers.transform(simpleEvent, [transformer])
+        transform(simpleEvent, [transformer])
         expect(simpleEvent.mapMe).toBeNull()
 
-        transformer.config = `{"map": {
-            "mapMe": {"set": false}
-        }}`
-        Transformers.transform(simpleEvent, [transformer])
+        transformer.config = {'map': {
+            'mapMe': {'set': false}
+        }}
+        transform(simpleEvent, [transformer])
         expect(simpleEvent.mapMe).toBe(false)
 
-        transformer.config = `{"map": {
-            "mapMe": {"set": 0}
-        }}`
-        Transformers.transform(simpleEvent, [transformer])
+        transformer.config = {'map': {
+            'mapMe': {'set': 0}
+        }}
+        transform(simpleEvent, [transformer])
         expect(simpleEvent.mapMe).toBe(0)
 
-        transformer.config = `{"map": {
-            "mapMe": {"set": []}
-        }}`
-        Transformers.transform(simpleEvent, [transformer])
+        transformer.config = {'map': {
+            'mapMe': {'set': []}
+        }}
+        transform(simpleEvent, [transformer])
         expect(simpleEvent.mapMe).toStrictEqual([])
     })
 
     test('map_properties can convert values to strings', () => {
-        transformer.config = `{"map": {
-            "mapMe": {"to_string": true}
-        }}`
+        transformer.config = {'map': {
+            'mapMe': {'to_string': true}
+        }}
 
         simpleEvent.mapMe = 1234
-        Transformers.transform(simpleEvent, [transformer])
+        transform(simpleEvent, [transformer])
         expect(simpleEvent.mapMe).toBe('1234')
 
         simpleEvent.mapMe = null
-        Transformers.transform(simpleEvent, [transformer])
+        transform(simpleEvent, [transformer])
         expect(simpleEvent.mapMe).toBe('null')
 
         simpleEvent.mapMe = []
-        Transformers.transform(simpleEvent, [transformer])
-        expect(simpleEvent.mapMe).toBe('[]')
+        transform(simpleEvent, [transformer])
+        expect(simpleEvent.mapMe).toStrictEqual([])
 
         simpleEvent.mapMe = undefined
-        Transformers.transform(simpleEvent, [transformer])
+        transform(simpleEvent, [transformer])
         expect(simpleEvent.mapMe).toBe('undefined')
 
         simpleEvent.mapMe = {foo: 'bar'}
-        Transformers.transform(simpleEvent, [transformer])
-        expect(simpleEvent.mapMe).toBe('{"foo":"bar"}')
+        transform(simpleEvent, [transformer])
+        expect(simpleEvent.mapMe).toStrictEqual({foo: 'bar'})
 
         simpleEvent.mapMe = 'already a string'
-        Transformers.transform(simpleEvent, [transformer])
+        transform(simpleEvent, [transformer])
         expect(simpleEvent.mapMe).toBe('already a string')
 
         simpleEvent.mapMe = false
-        Transformers.transform(simpleEvent, [transformer])
+        transform(simpleEvent, [transformer])
         expect(simpleEvent.mapMe).toBe('false')
     })
 })
