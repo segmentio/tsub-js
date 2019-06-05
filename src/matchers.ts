@@ -1,30 +1,19 @@
 import * as Store from './store'
 import * as get from 'lodash.get'
 
-export default function matches(matchers: Store.Matcher[], event): boolean {
-    if (matchers.length === 0) {
-        throw new Error('No matchers supplied!')
+export default function matches(event, matcher: Store.Matcher): boolean {
+    if (!matcher) {
+        throw new Error('No matcher supplied!')
     }
 
-    // If any evaluate to false, early return
-    for (const matcher of matchers) {
-        switch (matcher.type) {
-            case 'all':
-                if (!all()) {
-                    return false
-                }
-                break
-            case 'fql':
-                if (!fql(matcher.ir, event)) {
-                    return false
-                }
-                break
-            default:
-                throw new Error(`Matcher of type ${matcher.type} unsupported.`)
-        }
+    switch (matcher.type) {
+        case 'all':
+            return all()
+        case 'fql':
+            return fql(matcher.ir, event)
+        default:
+            throw new Error(`Matcher of type ${matcher.type} unsupported.`)
     }
-
-    return true
 }
 
 function all(): boolean {

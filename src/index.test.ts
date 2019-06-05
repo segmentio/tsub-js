@@ -21,20 +21,22 @@ test('we can use the exported transformer', () => {
 
 test('we can use the exported matcher', () => {
     // FQL: contains(email, ".com")
-    let result = matches([{
+    let result = matches({
+        email: 'peter.richmond@segment.com'
+    },
+        {
         ir: `["contains", "email", {"value": ".com"}]`,
         type: 'fql'
-    }], {
-        email: 'peter.richmond@segment.com'
     })
 
     expect(result === true)
 
-    result = matches([{
+    result = matches({
+        email: 'peter.richmond@segment.NOPE'
+    },
+        {
         ir: `["contains", "email", {"value": ".com"}]`,
         type: 'fql'
-    }], {
-        email: 'peter.richmond@segment.NOPE'
     })
 
     expect(result === false)
@@ -91,7 +93,7 @@ test('we can use all exports to full evaluate a rule on a payload', () => {
     }
 
     // Payload that should drop
-    if (matches(matchers, payloadToDrop)) {
+    if (matches(payloadToDrop, matchers[0])) {
         let payload = payloadToDrop
         for (const transformer of transformers) {
             payload = transform(payload, transformer)
@@ -102,7 +104,7 @@ test('we can use all exports to full evaluate a rule on a payload', () => {
         expect(false)
     }
 
-    if (matches(matchers, payloadToKeep)) {
+    if (matches(payloadToKeep, matchers[0])) {
         console.error('Matcher failed - expected no match!')
         expect(false)
     }
