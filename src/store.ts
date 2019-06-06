@@ -28,7 +28,7 @@ export default class Store {
     public getRulesByDestinationName(destinationName: string): Rule[] {
         const rules: Rule[] = []
             for (const rule of this.rules) {
-                // Rules with no destinationName are global (workspace || workspace::source
+                // Rules with no destinationName are global (workspace || workspace::source)
                 if (rule.destinationName === destinationName || rule.destinationName === undefined) {
                     rules.push(rule)
                 }

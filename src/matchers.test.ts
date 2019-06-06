@@ -93,10 +93,20 @@ describe('boolean literals', () => {
 })
 
 describe('functions', () => {
-    // TODO MATCH. :(
-    /*
-    test(match works)
-     */
+    test('match() works', () => {
+        // FQL: match("test@test.com", "*.com")
+        matcher.ir = `["match", {"value": "test@test.com"}, {"value": "*.com"}]`
+        expect(matches(simpleEvent, matcher)).toBe(true)
+
+        for (const matcherTest of matcherTests) {
+            const pattern = matcherTest[0]
+            const str = matcherTest[1]
+            const expectedResult = matcherTest[2]
+
+            matcher.ir = `["match", {"value": "${str}"}, {"value": "${pattern}"}]`
+            expect(matches({}, matcher)).toBe(expectedResult)
+        }
+    })
 
     test('contains() works', () => {
         // FQL: contains(email, ".com")
@@ -268,3 +278,61 @@ describe('subexpressions', () => {
     })
 })
 
+const matcherTests = [
+    ['abc', 'abc', true],
+    ['*', 'abc', true],
+    ['*c', 'abc', true],
+    ['*b', 'abc', false],
+    ['a*', 'a', true],
+    ['a*', 'abc', true],
+    ['a*', 'ab/c', true],
+    ['a*/b', 'abc/b', true],
+    ['a*/b', 'a/c/b', true],
+    ['a*b*c*d*e*/f', 'axbxcxdxe/f', true],
+    ['a*b*c*d*e*/f', 'axbxcxdxexxx/f', true],
+    ['a*b*c*d*e*/f', 'axbxcxdxe/xxx/f', true],
+    ['a*b*c*d*e*/f', 'axbxcxdxexxx/fff', false],
+    ['a*b?c*x', 'abxbbxdbxebxczzx', true],
+    ['a*b?c*x', 'abxbbxdbxebxczzy', false],
+    ['*a*b*c*', 'abcabcabc', true],
+    ['ab[c]', 'abc', true],
+    ['ab[b-d]', 'abc', true],
+    ['ab[e-g]', 'abc', false],
+    ['ab[^c]', 'abc', false],
+    ['ab[^b-d]', 'abc', false],
+    ['ab[^e-g]', 'abc', true],
+    ['a\\\\*b', 'a*b', true],
+    ['a\\\\*b', 'ab', false],
+    ['a?b', 'a☺b', true],
+    ['a[^a]b', 'a☺b', true],
+    ['a???b', 'a☺b', false],
+    ['a[^a][^a][^a]b', 'a☺b', false],
+    ['[a-ζ]*', 'α', true],
+    ['*[a-ζ]', 'A', false],
+    ['a?b', 'a/b', true],
+    ['a*b', 'a/b', true],
+    ['[\\\\]a]', ']', true],
+    ['[\\\\-]', '-', true],
+    ['[x\\\\-]', 'x', true],
+    ['[x\\\\-]', '-', true],
+    ['[x\\\\-]', 'z', false],
+    ['[\\\\-x]', 'x', true],
+    ['[\\\\-x]', '-', true],
+    ['[\\\\-x]', 'a', false],
+    ['[]a]', ']', false],
+    ['[-]', '-', false],
+    ['[x-]', 'x', false],
+    ['[x-]', '-', false],
+    ['[x-]', 'z', false],
+    ['[-x]', 'x', false],
+    ['[-x]', '-', false],
+    ['[-x]', 'a', false],
+    ['\\\\', 'a', false],
+    ['[a-b-c]', 'a', false],
+    ['[', 'a', false],
+    ['[^', 'a', false],
+    ['[^bc', 'a', false],
+    ['a[', 'a', false],
+    ['a[', 'ab', false],
+    ['*x', 'xxx', true],
+]

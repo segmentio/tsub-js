@@ -90,7 +90,7 @@ function fqlEvaluate(ir, event) {
             return contains(getValue(ir[1], event), getValue(ir[2], event))
         // 'match(str, match)' => The given string matches the provided glob matcher
         case 'match':
-            // TODO: Import glob match library that === segmentio/glob
+            return match(getValue(ir[1], event), getValue(ir[2], event))
         // 'lowercase(str)' => Returns a lowercased string, null if the item is not a string
         case 'lowercase':
             const target = getValue(ir[1], event)
@@ -198,6 +198,14 @@ function contains(first, second): boolean {
     return first.indexOf(second) !== -1
 }
 
+function match(str, glob): boolean {
+    if (typeof str !== 'string' || typeof glob !== 'string') {
+        return false
+    }
+
+    return globMatches(glob, str)
+}
+
 function length(item) {
     // Match server-side behavior.
     if (item === null) {
@@ -230,4 +238,222 @@ function isIR(value): boolean {
     }
 
     return false
+}
+
+// Any reputable glob matcher is designed to work on filesystems and doesn't allow the override of the separator
+// character "/". This is problematic since our server-side representation e.g. evaluates "match('ab/c', 'a*)"
+// as TRUE, whereas any glob matcher for JS available does false. So we're rewriting it here.
+// See: https://github.com/segmentio/glob/blob/master/glob.go
+function globMatches(pattern, str): boolean {
+Pattern:
+    while (pattern.length > 0) {
+        let star
+        let chunk
+        ({star, chunk, pattern} = scanChunk(pattern))
+        if (star && chunk === '') {
+            // Trailing * matches rest of string
+            return true
+        }
+
+        // Look for match at current position
+        let {t, ok, err} = matchChunk(chunk, str)
+        if (err) {
+            return false
+        }
+
+        // If we're the last chunk, make sure we've exhausted the str
+        // otherwise we'll give a false result even if we could still match
+        // using the star
+        if (ok && (t.length === 0 || pattern.length > 0)) {
+            str = t
+            continue
+        }
+
+        if (star) {
+            // Look for match, skipping i+1 bytes.
+            for (let i = 0; i < str.length; i++) {
+                ({t, ok, err} = matchChunk(chunk, str.slice(i + 1)))
+                if (ok) {
+                    // If we're the last chunk, make sure we exhausted the str.
+                    if (pattern.length === 0 && t.length > 0) {
+                        continue
+                    }
+
+                    str = t
+                    continue Pattern
+                }
+
+                if (err) {
+                    return false
+                }
+            }
+        }
+
+        return false
+    }
+
+    return str.length === 0
+}
+
+function scanChunk(pattern): any {
+    const result = {
+        star: false,
+        chunk: '',
+        pattern: '',
+    }
+
+    while (pattern.length > 0 && pattern[0] === '*') {
+        pattern = pattern.slice(1)
+        result.star = true
+    }
+
+    let inRange = false
+    let i
+
+Scan:
+    for (i = 0; i < pattern.length; i++) {
+        switch (pattern[i]) {
+            case '\\':
+                // Error check handled in matchChunk: bad pattern.
+                if (i + 1 < pattern.length) {
+                    i++
+                }
+                break
+            case '[':
+                inRange = true
+                break
+            case ']':
+                inRange = false
+                break
+            case '*':
+                if (!inRange) {
+                    break Scan
+                }
+        }
+    }
+
+    result.chunk = pattern.slice(0, i)
+    result.pattern = pattern.slice(i)
+    return result
+}
+
+// matchChunk checks whether chunk matches the beginning of s.
+// If so, it returns the remainder of s (after the match).
+// Chunk is all single-character operators: literals, char classes, and ?.
+function matchChunk(chunk, str): any {
+    const result = {
+        t: '',
+        ok: false,
+        err: false,
+    }
+
+    while (chunk.length > 0) {
+        if (str.length === 0) {
+            return result
+        }
+
+        switch (chunk[0]) {
+            case '[':
+                const char = str[0]
+                str = str.slice(1)
+                chunk = chunk.slice(1)
+
+                let notNegated = true
+                if (chunk.length > 0 && chunk[0] === '^') {
+                    notNegated = false
+                    chunk = chunk.slice(1)
+                }
+
+                // Parse all ranges
+                let foundMatch = false
+                let nRange = 0
+                while (true) {
+                    if (chunk.length > 0 && chunk[0] === ']' && nRange > 0) {
+                        chunk = chunk.slice(1)
+                        break
+                    }
+
+                    let lo = ''
+                    let hi = ''
+                    let err
+                    ({char: lo, newChunk: chunk, err} = getEsc(chunk))
+                    if (err) {
+                        return result
+                    }
+
+                    hi = lo
+                    if (chunk[0] === '-') {
+                        ({char: hi, newChunk: chunk, err} = getEsc(chunk.slice(1)))
+                        if (err) {
+                            return result
+                        }
+                    }
+
+                    if (lo <= char && char <= hi) {
+                        foundMatch = true
+                    }
+
+                    nRange++
+                }
+
+                if (foundMatch !== notNegated) {
+                    return result
+                }
+                break
+            case '?':
+                str = str.slice(1)
+                chunk = chunk.slice(1)
+                break
+            case '\\':
+                chunk = chunk.slice(1)
+                if (chunk.length === 0) {
+                    result.err = true
+                    return result
+                }
+                // Fallthrough, missing break intentional.
+            default:
+                if (chunk[0] !== str[0]) {
+                    return result
+                }
+                str = str.slice(1)
+                chunk = chunk.slice(1)
+        }
+    }
+
+    result.t = str
+    result.ok = true
+    result.err = false
+    return result
+}
+
+// getEsc gets a possibly-escaped character from chunk, for a character class.
+function getEsc(chunk): any {
+    const result = {
+       char: '',
+       newChunk: '',
+       err: false,
+    }
+
+    if (chunk.length === 0 || chunk[0] === '-' || chunk[0] === ']') {
+        result.err = true
+        return result
+    }
+
+    if (chunk[0] === '\\') {
+        chunk = chunk.slice(1)
+        if (chunk.length === 0) {
+            result.err = true
+            return result
+        }
+    }
+
+    // Unlike Go, JS strings operate on characters instead of bytes.
+    // This is why we aren't copying over the GetRuneFromString stuff.
+    result.char = chunk[0]
+    result.newChunk = chunk.slice(1)
+    if (result.newChunk.length === 0) {
+        result.err = true
+    }
+
+    return result
 }
