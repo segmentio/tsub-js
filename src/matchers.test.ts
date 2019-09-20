@@ -302,6 +302,7 @@ const matcherTests = [
     ['ab[^b-d]', 'abc', false],
     ['ab[^e-g]', 'abc', true],
     ['a\\\\*b', 'a*b', true],
+    ['a\\\\ b', 'a b', true],
     ['a\\\\*b', 'ab', false],
     ['a?b', 'a☺b', true],
     ['a[^a]b', 'a☺b', true],
