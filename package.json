@@ -9,7 +9,9 @@
     "test": "jest",
     "build": "rm -rf dist && tsc",
     "lint": "tslint src/**/*.ts",
-    "lint_test": "tslint src/**/*.test.ts"
+    "lint_test": "tslint src/**/*.test.ts",
+    "snyk-protect": "snyk protect",
+    "prepare": "yarn run snyk-protect"
   },
   "repository": "git+https://github.com/segmentio/tsub-js.git",
   "author": "",
@@ -24,7 +26,8 @@
     "lodash.get": "^4.4.2",
     "lodash.set": "^4.3.2",
     "lodash.unset": "^4.5.2",
-    "math-float64-ldexp": "^1.0.1"
+    "math-float64-ldexp": "^1.0.1",
+    "snyk": "^1.361.3"
   },
   "devDependencies": {
     "@types/jest": "^24.0.13",
@@ -55,5 +58,6 @@
       "examples/**/generated/**",
       "**/__snapshots__/**"
     ]
-  }
+  },
+  "snyk": true
 }
