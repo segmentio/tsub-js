@@ -1,5 +1,5 @@
 import { Transformer } from './store'
-import * as MD5 from 'js-md5'
+import * as MD5 from 'tiny-hashes/md5'
 import * as ldexp from 'math-float64-ldexp'
 import * as get from 'dlv'
 import * as set from 'dset'
@@ -215,7 +215,7 @@ function sampleConsistentPercent(payload: any, config: TransformerConfig): boole
   const field = get(payload, config.sample.path)
 
   // Operate off of JSON bytes. TODO: Validate all type behavior, esp. strings.
-  const digest: number[] = MD5.digest(JSON.stringify(field))
+  const digest: number[] = MD5(JSON.stringify(field))
   let exponent = -64
 
   // Manually maintain 64-bit int as an array.

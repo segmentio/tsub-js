@@ -22,8 +22,8 @@
     "@segment/fql": "^1.6.1",
     "dlv": "^1.1.3",
     "dset": "^2.0.1",
-    "js-md5": "^0.7.3",
-    "math-float64-ldexp": "^1.0.1"
+    "math-float64-ldexp": "^1.0.1",
+    "tiny-hashes": "^1.0.1"
   },
   "devDependencies": {
     "@size-limit/preset-small-lib": "^4.9.1",
