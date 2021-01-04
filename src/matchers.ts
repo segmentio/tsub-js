@@ -1,5 +1,5 @@
 import * as Store from './store'
-import * as get from 'lodash.get'
+import * as get from 'dlv'
 
 export default function matches(event, matcher: Store.Matcher): boolean {
   if (!matcher) {

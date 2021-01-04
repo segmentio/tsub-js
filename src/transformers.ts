@@ -1,8 +1,8 @@
 import { Transformer } from './store'
 import * as MD5 from 'js-md5'
 import * as ldexp from 'math-float64-ldexp'
-import * as get from 'lodash.get'
-import * as set from 'lodash.set'
+import * as get from 'dlv'
+import * as set from 'dset'
 import * as unset from 'lodash.unset'
 
 export interface TransformerConfig {
