@@ -38,7 +38,7 @@
   "size-limit": [
     {
       "path": "dist/src/index.js",
-      "limit": "10 KB"
+      "limit": "3.5 KB"
     }
   ],
   "prettier": {
