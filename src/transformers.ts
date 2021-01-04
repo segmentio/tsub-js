@@ -6,10 +6,10 @@ import * as set from 'dset'
 import { unset } from './unset'
 
 export interface TransformerConfig {
-  allow?: Map<string, string[]>
-  drop?: Map<string, string[]>
+  allow?: Record<string, string[]>
+  drop?: Record<string, string[]>
   sample?: TransformerConfigSample
-  map?: Map<string, TransformerConfigMap>
+  map?: Record<string, TransformerConfigMap>
 }
 
 export interface TransformerConfigSample {

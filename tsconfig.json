@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "module": "CommonJS",
-    "target": "es3",
+    "target": "es5",
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitAny": false,
@@ -14,7 +14,7 @@
       "*": ["node_modules/*"]
     }
   },
-  "lib": ["es2017"],
+  "lib": ["es2015"],
   "include": ["src/**/*"],
-  "exclude": ["tests/**/*"]
+  "exclude": ["src/__tests__/**/*"]
 }
