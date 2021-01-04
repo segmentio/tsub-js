@@ -3,7 +3,7 @@ import * as MD5 from 'js-md5'
 import * as ldexp from 'math-float64-ldexp'
 import * as get from 'dlv'
 import * as set from 'dset'
-import * as unset from 'lodash.unset'
+import { unset } from './unset'
 
 export interface TransformerConfig {
   allow?: Map<string, string[]>
