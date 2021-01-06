@@ -9,7 +9,8 @@
     "test": "jest",
     "build": "rm -rf dist && tsc",
     "lint": "tslint src/**/*.ts",
-    "lint_test": "tslint src/**/*.test.ts"
+    "lint_test": "tslint src/**/*.test.ts",
+    "prepare": "build"
   },
   "repository": "git+https://github.com/segmentio/tsub-js.git",
   "author": "",
