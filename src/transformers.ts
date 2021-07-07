@@ -1,6 +1,7 @@
 import { Transformer } from './store'
 import * as MD5 from 'tiny-hashes/md5'
 import * as get from 'dlv'
+import * as ldexp from 'math-float64-ldexp'
 import * as set from 'dset/dist/dset.js'
 import { unset } from './unset'
 
@@ -250,7 +251,7 @@ function sampleConsistentPercent(payload: any, config: TransformerConfig): boole
   significand[63] = significand[63] === 0 ? 1 : 0
 
   // Convert our manual binary into a JS num (binary arr => binary string => psuedo-int) and run the ldexp!
-  return (parseInt(significand.join(''), 2) * 2 ** exponent) < config.sample.percent
+  return ldexp(parseInt(significand.join(''), 2), exponent) < config.sample.percent
 }
 
 // Array byte filler helper
