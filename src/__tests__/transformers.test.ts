@@ -238,7 +238,7 @@ describe('sample_event', () => {
       simpleEvent.propToSampleOffOf = Math.random()
       let hasBeenDefined = false
       for (let percent = 0; percent <= 1.01; percent += 0.01) {
-        transformer.config = { sample: { percent: percent, path: 'propToSampleOffOf' } }
+        transformer.config = { sample: { percent, path: 'propToSampleOffOf' } }
         const result = transform(simpleEvent, [transformer])
         if (hasBeenDefined) {
           expect(result).toBeTruthy()

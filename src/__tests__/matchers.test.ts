@@ -18,7 +18,7 @@ beforeEach(() => {
 
 describe('error handling and basic checks', () => {
   test('throws on a bad IR', () => {
-    ;(matcher.ir = 'Invalid//**[]""""json'),
+    ; (matcher.ir = 'Invalid//**[]""""json'),
       expect(() => {
         matches({}, matcher)
       }).toThrow()
