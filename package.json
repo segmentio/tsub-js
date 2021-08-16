@@ -1,6 +1,6 @@
 {
   "name": "@segment/tsub",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Tsub for JS",
   "main": "dist/index.js",
   "browser": "dist/index.js",
