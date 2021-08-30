@@ -25,10 +25,10 @@
     "tiny-hashes": "^1.0.1"
   },
   "devDependencies": {
-    "@size-limit/preset-small-lib": "^4.9.1",
+    "@size-limit/preset-small-lib": "^5.0.3",
     "@types/jest": "^24.0.13",
     "jest": "^26.6.3",
-    "size-limit": "^4.9.1",
+    "size-limit": "^5.0.3",
     "ts-jest": "^26.4.4",
     "tslint": "^5.16.0",
     "tslint-config-prettier": "^1.18.0",
