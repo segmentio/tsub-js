@@ -1,4 +1,4 @@
-import * as get from 'dlv'
+import get from 'dlv'
 
 export function unset(obj, prop) {
   if (get(obj, prop)) {
