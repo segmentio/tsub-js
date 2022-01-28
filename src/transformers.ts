@@ -1,8 +1,8 @@
 import { Transformer } from './store'
-import * as MD5 from 'tiny-hashes/md5'
-import * as get from 'dlv'
-import * as ldexp from 'math-float64-ldexp'
-import * as set from 'dset/dist/dset.js'
+import MD5 from 'tiny-hashes/md5'
+import get from 'dlv'
+import ldexp from '@stdlib/math-base-special-ldexp'
+import { dset } from 'dset';
 import { unset } from './unset'
 
 export interface TransformerConfig {
@@ -142,19 +142,19 @@ function mapProperties(payload: any, config: TransformerConfig) {
     if (actionMap.copy) {
       const valueToCopy = get(initialPayload, actionMap.copy)
       if (valueToCopy !== undefined) {
-        set(payload, key, valueToCopy)
+        dset(payload, key, valueToCopy)
       }
     } else if (actionMap.move) {
       const valueToMove = get(initialPayload, actionMap.move)
       if (valueToMove !== undefined) {
-        set(payload, key, valueToMove)
+        dset(payload, key, valueToMove)
       }
 
       unset(payload, actionMap.move)
     }
     // Have to check only if property exists, as null, undefined, and other vals could be explicitly set.
     else if (actionMap.hasOwnProperty('set')) {
-      set(payload, key, actionMap.set)
+      dset(payload, key, actionMap.set)
     }
 
     // to_string is not exclusive and can be paired with other actions. Final action.
@@ -171,10 +171,10 @@ function mapProperties(payload: any, config: TransformerConfig) {
 
       // TODO: Check stringifier in Golang for parity.
       if (valueToString !== undefined) {
-        set(payload, key, JSON.stringify(valueToString))
+        dset(payload, key, JSON.stringify(valueToString))
       } else {
         // TODO: Check this behavior.
-        set(payload, key, 'undefined')
+        dset(payload, key, 'undefined')
       }
     }
   }
