@@ -147,6 +147,29 @@ describe('functions', () => {
     expect(matches({}, matcher)).toBe(false)
   })
 
+  test('in() works', () => {
+    // FQL: "event" in ["event", "str"]
+    matcher.ir = `["in", {"value": "event"}, {"value": [{"value": "event"}, {"value": "str"}]}]`
+    expect(matches({}, matcher)).toBe(true)
+
+    // FQL: "str" in ["event", "str"]
+    matcher.ir = `["in", {"value": "str"}, {"value": [{"value": "event"}, {"value": "str"}]}]`
+    expect(matches({}, matcher)).toBe(true)
+
+    // FQL: "blah" in ["event", "str"]
+    matcher.ir = `["in", {"value": "blah"}, {"value": [{"value": "event"}, {"value": "str"}]}]`
+    expect(matches({}, matcher)).toBe(false)
+
+    // FQL: event in ["Clicked", "Viewed"]
+    matcher.ir = `["in", "event", {"value": [{"value": "Clicked"}, {"value": "Viewed"}]}]`
+    simpleEvent.event = "Clicked"
+    expect(matches(simpleEvent, matcher)).toBe(true)
+
+    matcher.ir = `["in", "event", {"value": [{"value": "Clicked"}, {"value": "Viewed"}]}]`
+    simpleEvent.event = "Blah"
+    expect(matches(simpleEvent, matcher)).toBe(false)
+  })
+
   test('unknown functions fail', () => {
     // FQL: <Not valid FQL>
     matcher.ir = `["findTheDefiniteIntegralOf", {"value": "2x+47"}, {"value": "Bounded from 1 to 3"}]`

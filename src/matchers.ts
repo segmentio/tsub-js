@@ -105,6 +105,9 @@ function fqlEvaluate(ir, event) {
     // 'length(val)' => Returns the length of an array or string, NaN if neither
     case 'length':
       return length(getValue(ir[1], event))
+    // 'in(item, list)' => Checks whether item is in list
+    case 'in':
+      return checkInList(getValue(ir[1], event), getValue(ir[2], event), event)
     // If nothing hit, we or the IR messed up somewhere.
     default:
       throw new Error(`FQL IR could not evaluate for token: ${item}`)
@@ -124,6 +127,16 @@ function getValue(item, event) {
 
   // Otherwise, it's an event path, e.g. "properties.email"
   return get(event, item)
+}
+
+function checkInList(item, list, event): boolean {
+  const values = list.map(it => getValue(it, event))
+  for (let i = 0; i < values.length; i++) {
+    if (values[i] === item) {
+      return true
+    }
+  }
+  return false
 }
 
 function compareNumbers(first, second, operator, event): boolean {
