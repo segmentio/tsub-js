@@ -162,11 +162,11 @@ describe('functions', () => {
 
     // FQL: event in ["Clicked", "Viewed"]
     matcher.ir = `["in", "event", {"value": [{"value": "Clicked"}, {"value": "Viewed"}]}]`
-    simpleEvent.event = "Clicked"
+    simpleEvent.event = 'Clicked'
     expect(matches(simpleEvent, matcher)).toBe(true)
 
     matcher.ir = `["in", "event", {"value": [{"value": "Clicked"}, {"value": "Viewed"}]}]`
-    simpleEvent.event = "Blah"
+    simpleEvent.event = 'Blah'
     expect(matches(simpleEvent, matcher)).toBe(false)
   })
 
