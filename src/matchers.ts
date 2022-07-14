@@ -83,6 +83,9 @@ function fqlEvaluate(ir, event) {
     case '>=':
       // Compare the two values with the given operator.
       return compareNumbers(getValue(ir[1], event), getValue(ir[2], event), item, event)
+    // item in [list]' => Checks whether item is in list
+    case 'in':
+      return checkInList(getValue(ir[1], event), getValue(ir[2], event), event)
 
     /*** Functions ***/
     // 'contains(str1, str2)' => The first string has a substring of the second string
@@ -105,9 +108,6 @@ function fqlEvaluate(ir, event) {
     // 'length(val)' => Returns the length of an array or string, NaN if neither
     case 'length':
       return length(getValue(ir[1], event))
-    // 'in(item, list)' => Checks whether item is in list
-    case 'in':
-      return checkInList(getValue(ir[1], event), getValue(ir[2], event), event)
     // If nothing hit, we or the IR messed up somewhere.
     default:
       throw new Error(`FQL IR could not evaluate for token: ${item}`)
