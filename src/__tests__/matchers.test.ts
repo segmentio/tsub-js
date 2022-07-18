@@ -266,6 +266,44 @@ describe('binary operands', () => {
     matcher.ir = `["or",{"value":false},{"value":false},{"value":false}]`
     expect(matches({}, matcher)).toBe(false)
   })
+
+  test('in() works', () => {
+    // FQL: "event" in ["event", "str"]
+    matcher.ir = `["in", {"value": "event"}, {"value": [{"value": "event"}, {"value": "str"}]}]`
+    expect(matches({}, matcher)).toBe(true)
+
+    // FQL: "str" in ["event", "str"]
+    matcher.ir = `["in", {"value": "str"}, {"value": [{"value": "event"}, {"value": "str"}]}]`
+    expect(matches({}, matcher)).toBe(true)
+
+    // FQL: "blah" in ["event", "str"]
+    matcher.ir = `["in", {"value": "blah"}, {"value": [{"value": "event"}, {"value": "str"}]}]`
+    expect(matches({}, matcher)).toBe(false)
+
+    // FQL: event in ["Clicked", "Viewed"]
+    matcher.ir = `["in", "event", {"value": [{"value": "Clicked"}, {"value": "Viewed"}]}]`
+    simpleEvent.event = 'Clicked'
+    expect(matches(simpleEvent, matcher)).toBe(true)
+
+    matcher.ir = `["in", "event", {"value": [{"value": "Clicked"}, {"value": "Viewed"}]}]`
+    simpleEvent.event = 'Blah'
+    expect(matches(simpleEvent, matcher)).toBe(false)
+
+    matcher.ir = `["in", {"value": 10}, {"value": [{"value": "Clicked"}, {"value": 10}]}]`
+    simpleEvent.event = 'Blah'
+    expect(matches(simpleEvent, matcher)).toBe(true)
+
+    matcher.ir = `["in", {"value": "track"}, {"value": ["event", "type"]}]`
+    simpleEvent.event = 'Blah'
+    expect(matches(simpleEvent, matcher)).toBe(true)
+
+    matcher.ir = `["in", {"value": "track"}, {"value": []}]`
+    expect(matches(simpleEvent, matcher)).toBe(false)
+
+    matcher.ir = `["in", {"value": null}, {"value": [{"value": "Clicked"}, {"value": 10}]}]`
+    simpleEvent.event = 'Blah'
+    expect(matches(simpleEvent, matcher)).toBe(false)
+  })
 })
 
 describe('subexpressions', () => {

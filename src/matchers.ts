@@ -83,6 +83,9 @@ function fqlEvaluate(ir, event) {
     case '>=':
       // Compare the two values with the given operator.
       return compareNumbers(getValue(ir[1], event), getValue(ir[2], event), item, event)
+    // item in [list]' => Checks whether item is in list
+    case 'in':
+      return checkInList(getValue(ir[1], event), getValue(ir[2], event), event)
 
     /*** Functions ***/
     // 'contains(str1, str2)' => The first string has a substring of the second string
@@ -124,6 +127,10 @@ function getValue(item, event) {
 
   // Otherwise, it's an event path, e.g. "properties.email"
   return get(event, item)
+}
+
+function checkInList(item, list, event): boolean {
+  return list.find(it => getValue(it, event) === item) !== undefined
 }
 
 function compareNumbers(first, second, operator, event): boolean {
