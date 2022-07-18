@@ -130,11 +130,8 @@ function getValue(item, event) {
 }
 
 function checkInList(item, list, event): boolean {
-  const values = list.map(it => getValue(it, event))
-  for (let i = 0; i < values.length; i++) {
-    if (values[i] === item) {
-      return true
-    }
+  if (list.find(it => getValue(it, event) === item)) {
+    return true
   }
   return false
 }
