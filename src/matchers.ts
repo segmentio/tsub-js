@@ -130,10 +130,7 @@ function getValue(item, event) {
 }
 
 function checkInList(item, list, event): boolean {
-  if (list.find(it => getValue(it, event) === item)) {
-    return true
-  }
-  return false
+  return list.find(it => getValue(it, event) === item) !== undefined
 }
 
 function compareNumbers(first, second, operator, event): boolean {
