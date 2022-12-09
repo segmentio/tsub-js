@@ -2,15 +2,19 @@ import * as Store from './store'
 import get from 'dlv'
 
 export default function matches(event: unknown, matcher: Store.Matcher): boolean {
+  return getMatchFunction(matcher)(event)
+}
+
+export function getMatchFunction(matcher: Store.Matcher): (event: unknown) => boolean {
   if (!matcher) {
     throw new Error('No matcher supplied!')
   }
 
   switch (matcher.type) {
     case 'all':
-      return all()
+      return all
     case 'fql':
-      return fql(matcher.ir, event)
+      return fql(matcher.ir)
     default:
       throw new Error(`Matcher of type ${matcher.type} unsupported.`)
   }
@@ -20,9 +24,9 @@ function all(): boolean {
   return true
 }
 
-function fql(ir: Store.Matcher['ir'], event: unknown): boolean {
+function fql(ir: Store.Matcher['ir']): (event: unknown) => boolean {
   if (!ir) {
-    return false
+    return () => false
   }
 
   try {
@@ -33,9 +37,9 @@ function fql(ir: Store.Matcher['ir'], event: unknown): boolean {
 
   const evaluator = generateEvaluator(ir)
   if (typeof evaluator === 'function') {
-    return !!evaluator(event)
+    return (event) => !!evaluator(event)
   }
-  return !!evaluator
+  return () => !!evaluator
 }
 
 export function generateFQLEval(ir: Store.Matcher['ir']): (event: unknown) => boolean {

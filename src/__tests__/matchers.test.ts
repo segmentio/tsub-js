@@ -385,10 +385,12 @@ describe('performance', () => {
       ["or", 
         ["=", "event", { "value": "Course Not Clicked" }],
         ["=", "event", { "value": "Course Clicked" }]
-      ]
+      ],
+      ["=", ["lowercase", "event"], { "value": "course clicked" }],
+      ["match", "context.ip", { "value": "108*" }]
     ]
     `
-    // expect(matches(manyPropertiesEvent, matcher)).toBe(true)
+
     const evaluator = generateFQLEval(matcher.ir)
     expect(evaluator(manyPropertiesEvent)).toBe(true)
 
@@ -396,6 +398,7 @@ describe('performance', () => {
     performance.mark('First')
 
     for (let index = 0; index < 10000; index++) {
+      manyPropertiesEvent.messageId = index
       expect(evaluator(manyPropertiesEvent)).toBe(true)
     }
 
