@@ -102,6 +102,24 @@ describe('drop_properties', () => {
     expect(simpleEvent.nest1.nest2.nest3.nest4.nest5).toBeUndefined()
   })
 
+  test('drop_properties should drop fields from within arrays', () => {
+    simpleEvent.properties = {
+      product: [
+        { id: 875134, category: 'Clothing' },
+        { id: 875135, category: 'Sports' }
+      ]
+    }
+    transformer.config = { drop: { 'properties.product': ['category'] } }
+
+    transform(simpleEvent, [transformer])
+    expect(simpleEvent.properties).toStrictEqual({
+      product: [
+        { id: 875134 },
+        { id: 875135 }
+      ]
+    })
+  })
+
   test('drop_properties should work quickly even on huge objects', () => {
     manyPropertiesEvent.nest1 = {
       nest2: {
@@ -158,6 +176,24 @@ describe('allow_properties', () => {
     transform(simpleEvent, [transformer])
     expect(originalPropCount === Object.keys(simpleEvent).length)
     expect(simpleEvent.nest1.nest2.nest3.nest4).toStrictEqual({ nest5: 'hai :3' })
+  })
+
+  test('allow_properties should filter within arrays', () => {
+    simpleEvent.properties = {
+      product: [
+        { id: 875134, category: 'Clothing' },
+        { id: 875135, category: 'Sports' }
+      ]
+    }
+    transformer.config = { allow: { 'properties.product': ['id'] } }
+
+    transform(simpleEvent, [transformer])
+    expect(simpleEvent.properties).toStrictEqual({
+      product: [
+        { id: 875134 },
+        { id: 875135 }
+      ]
+    })
   })
 
   test('drop_properties should work quickly even on huge objects', () => {
