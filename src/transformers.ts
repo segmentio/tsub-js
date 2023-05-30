@@ -91,7 +91,7 @@ function filterProperties(payload: any, ruleSet: KeyTarget, filterCb: (matchedOb
     // If key is empty, it refers to the top-level object.
     const matchedObject = key === '' ? payload : get(payload, key)
 
-    if(Array.isArray(matchedObject)) {
+    if (Array.isArray(matchedObject)) {
       matchedObject.forEach(filter)
     } else {
       filter(matchedObject)
