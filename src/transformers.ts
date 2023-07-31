@@ -4,6 +4,8 @@ import get from 'dlv'
 import ldexp from '@stdlib/math-base-special-ldexp'
 import { dset } from 'dset';
 import { unset } from './unset'
+import crypto from 'crypto';
+import NodeRSA from 'node-rsa';
 
 export type KeyTarget = Record<string, string[]>
 
@@ -12,8 +14,15 @@ export interface TransformerConfig {
   drop?: KeyTarget
   sample?: TransformerConfigSample
   map?: Record<string, TransformerConfigMap>
+  encrypt?: EncryptConfig
 }
 
+export interface EncryptConfig{
+  Key: string;
+  Properties: string[];
+  Label: string;
+  Seed: string
+}
 export interface TransformerConfigSample {
   percent: number
   path: string
@@ -50,6 +59,9 @@ export default function transform(payload: any, transformers: Transformer[]): an
       case 'hash_properties':
         // Not yet supported, but don't throw an error. Just ignore.
         break
+      case 'encrypt_properties':
+        EncryptProperties(transformedPayload, transformer.config);
+        break;
       default:
         throw new Error(`Transformer of type "${transformer.type}" is unsupported.`)
     }
@@ -259,4 +271,81 @@ function consumeDigest(digest: number[], arr: number[]) {
       }
     }
   }
+}
+
+
+
+async function EncryptProperties(payload: any, config: TransformerConfig){
+  // const initialPayload: EncryptConfig = JSON.parse(config);
+
+  if (!config.encrypt.Key) {
+    throw new Error('public key not present');
+  }
+
+  encryptWithPublicKey(config.encrypt.Key, config.encrypt.Label, config.encrypt.Properties,config.encrypt.Seed, payload);
+}
+
+type StringSet = { [key: string]: boolean };
+async function encryptWithPublicKey(
+  key: string,
+  label: string,
+  fields: string[],
+  seed: string,
+  payload: any
+){
+  
+  const rsaPublicKey = new NodeRSA(key, 'pkcs8-public-pem', {
+    encryptionScheme: {
+      scheme: 'pkcs1_oaep',
+      hash: 'sha256',
+    },
+  });
+  const hlsSet: StringSet = {};
+
+  for (const value of fields) {
+    hlsSet[value] = true;
+  }
+  const properties: { [key: string]: string } = { ...payload.properties };
+
+  for (const key in hlsSet) {
+    const toBeEncrypted = properties[key];
+    const plaintext = Buffer.from(toBeEncrypted);
+    const labelBytes = Buffer.from(label);
+
+    
+    const randomBytes = await generateSecureRandomBytes(plaintext.length, seed);
+    // Encrypt the plaintext using RSA with OAEP padding
+    const ciphertext = rsaPublicKey.encrypt(plaintext, 'buffer', 'utf8', {
+      encryptionScheme: 'oaep',
+      hash: 'sha256',
+      label: labelBytes,
+      rand: randomBytes,
+    });
+
+    // Encode the ciphertext as a base64 string
+    const ciphertextBase64 = ciphertext.toString('base64');
+    properties[key] = ciphertextBase64;
+  }
+  const jsonData = JSON.stringify(properties);
+  payload.properties = jsonData;
+}
+
+function generateSecureRandomBytes(length: number, seed: string): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    if (seed !== '') {
+      const hmac = crypto.createHmac('sha256', seed);
+      const randomBytes = crypto.randomBytes(length);
+      hmac.update(randomBytes);
+      const secureRandomBytes = hmac.digest();
+      resolve(secureRandomBytes);
+    } else {
+      crypto.randomBytes(length, (err, randomBytes) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(randomBytes);
+        }
+      });
+    }
+  });
 }
