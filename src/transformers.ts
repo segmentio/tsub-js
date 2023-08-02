@@ -4,8 +4,7 @@ import get from 'dlv'
 import ldexp from '@stdlib/math-base-special-ldexp'
 import { dset } from 'dset';
 import { unset } from './unset'
-import crypto from 'crypto';
-import NodeRSA from 'node-rsa';
+import * as jsrsasign from 'jsrsasign';
 
 export type KeyTarget = Record<string, string[]>
 
@@ -293,13 +292,12 @@ async function encryptWithPublicKey(
   seed: string,
   payload: any
 ){
-  
-  const rsaPublicKey = new NodeRSA(key, 'pkcs8-public-pem', {
-    encryptionScheme: {
-      scheme: 'pkcs1_oaep',
-      hash: 'sha256',
-    },
-  });
+  // Convert the public key to PEM format
+  const publicKeyPem = jsrsasign.getPEM(jsrsasign.getKey(key)); 
+  // Create a RSAKey object from the public key PEM
+  const rsaPublicKey = new jsrsasign.RSAKey();
+  rsaPublicKey.readPublicKeyFromPEMString(publicKeyPem);
+
   const hlsSet: StringSet = {};
 
   for (const value of fields) {
@@ -307,19 +305,20 @@ async function encryptWithPublicKey(
   }
   const properties: { [key: string]: string } = { ...payload.properties };
 
+  // Constant bytes derived from the string "12345"
+  const constantBytes = generateConstantBytesFromString(seed.length, seed);
+  
   for (const key in hlsSet) {
     const toBeEncrypted = properties[key];
-    const plaintext = Buffer.from(toBeEncrypted);
-    const labelBytes = Buffer.from(label);
+    const plaintext = jsrsasign.stob(toBeEncrypted); // Convert string to bytes
 
-    
-    const randomBytes = await generateSecureRandomBytes(plaintext.length, seed);
-    // Encrypt the plaintext using RSA with OAEP padding
-    const ciphertext = rsaPublicKey.encrypt(plaintext, 'buffer', 'utf8', {
-      encryptionScheme: 'oaep',
-      hash: 'sha256',
+    const labelBytes = jsrsasign.stob(label); // Convert label to bytes
+
+    // Encrypt the plaintext using RSA with OAEP padding and constant bytes
+    const ciphertext = jsrsasign.KJUR.crypto.Cipher.encrypt(plaintext, rsaPublicKey, 'RSA-OAEP', {
+      md: 'sha256',
       label: labelBytes,
-      rand: randomBytes,
+      rng: new jsrsasign.RNG({ alg: 'prng', prov: new jsrsasign.SecureRandom(constantBytes) }),
     });
 
     // Encode the ciphertext as a base64 string
@@ -330,22 +329,14 @@ async function encryptWithPublicKey(
   payload.properties = jsonData;
 }
 
-function generateSecureRandomBytes(length: number, seed: string): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    if (seed !== '') {
-      const hmac = crypto.createHmac('sha256', seed);
-      const randomBytes = crypto.randomBytes(length);
-      hmac.update(randomBytes);
-      const secureRandomBytes = hmac.digest();
-      resolve(secureRandomBytes);
-    } else {
-      crypto.randomBytes(length, (err, randomBytes) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(randomBytes);
-        }
-      });
-    }
-  });
-}
+// Function to generate constant bytes from a string
+const generateConstantBytesFromString = (length: number, str: string): Uint8Array => {
+  const constantBytes = new Uint8Array(length);
+  const strBytes = jsrsasign.stob(str);
+
+  for (let i = 0; i < length; i++) {
+    constantBytes[i] = strBytes[i % strBytes.length];
+  }
+
+  return constantBytes;
+};
