@@ -463,7 +463,7 @@ describe('encrypt_properties', () => {
     }
 
     transform(payload, [transformer])
-    expect(simpleEvent.properties.citizenship).not.toEqual('Indian')
-
+    expect(payload.properties['citizenship']).not.toEqual('Indian')
+    expect(payload.properties['citizenship']).toBe('EhHhLw+WdZbbAV3q7ZwNIhCEPHN3LrlRqNwQEJCPxrlD5VZQtCBT9UfwJBHvHL+lfwIOn8G2egVb2lLM1uHlbpxW+atcwcV6JjGkxhBMkn5SQpVQ2BwRgsFGcS3DZdGFKFSY2XQhARe2Z0+xyGQ1s+OCaLbayegekKtVbmBK/kC1XqYfNW+Pvq3gdGMhoLn6ruQe/YihEtnKxBC5UyOxYp30EZ2VvpixqT0Z0DDP997W6Y7Rlt+eO2S2sbWB0tGhq/JkasKk4y9z7gYD77Asq1/faROy9+8NRcAtkowgU2qDfGuWiG44MZdhxbHsfJJS8g3VGvZ3IRyCCshPGzUvWw==')
   })
 })
