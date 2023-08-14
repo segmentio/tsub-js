@@ -106,17 +106,14 @@ describe('drop_properties', () => {
     simpleEvent.properties = {
       product: [
         { id: 875134, category: 'Clothing' },
-        { id: 875135, category: 'Sports' }
-      ]
+        { id: 875135, category: 'Sports' },
+      ],
     }
     transformer.config = { drop: { 'properties.product': ['category'] } }
 
     transform(simpleEvent, [transformer])
     expect(simpleEvent.properties).toStrictEqual({
-      product: [
-        { id: 875134 },
-        { id: 875135 }
-      ]
+      product: [{ id: 875134 }, { id: 875135 }],
     })
   })
 
@@ -182,17 +179,14 @@ describe('allow_properties', () => {
     simpleEvent.properties = {
       product: [
         { id: 875134, category: 'Clothing' },
-        { id: 875135, category: 'Sports' }
-      ]
+        { id: 875135, category: 'Sports' },
+      ],
     }
     transformer.config = { allow: { 'properties.product': ['id'] } }
 
     transform(simpleEvent, [transformer])
     expect(simpleEvent.properties).toStrictEqual({
-      product: [
-        { id: 875134 },
-        { id: 875135 }
-      ]
+      product: [{ id: 875134 }, { id: 875135 }],
     })
   })
 
@@ -448,27 +442,27 @@ describe('map_properties', () => {
   })
 })
 
-describe('encrypt_properties',() =>{
+describe('encrypt_properties', () => {
   beforeEach(() => {
     transformer.type = 'encrypt_properties'
     transformer.config = {
       encrypt: {
         Key: '-----BEGIN RSA PUBLIC KEY-----\nMIIBCgKCAQEAoxNilY9QL6OOIfh3laZzihp/0JfOj7sSN/MForSpGVPAAFaKkH8q\nGq+cwmiFRInjROvKJ/S2AwHKbuD1kHzb/c8CUqRdjwPhfajowSlS6QojbtC8BSJs\nFSG23v+5qYoF7GIgZ2klZDsLoLFdHPT/OsqhzzL1ORrIjIWPHbuAO0+oxDICMN68\nT3MMzfAHWs48wbHm7HaeyrOn7ZxbYpbAVpTklPMZOdHc8fJU+5gtZAoLiBTDlGz/\n2H+w62aYrFXE/XpJfg9vFckiz88BCSDUxtpuVZNf+IIk/aFOP+T5iH5a0NDeRa1L\nFm+WjAw98N9zku3lXHa+dS3cG8zlBxq+lwIDAQAB\n-----END RSA PUBLIC KEY-----',
-        Properties: ["citizenship", "sex", "phoneNumber"],
+        Properties: ['citizenship', 'sex', 'phoneNumber'],
         Label: 'mylabel',
         Seed: 'myseed',
-      }
+      },
     }
   })
 
   it('should encrypt properties with provided public key and seed', () => {
     const simpleEvent = {
       properties: {
-        citizenship: 'Indian'
+        citizenship: 'Indian',
       },
     }
 
     transform(simpleEvent, [transformer])
     expect(simpleEvent.properties['citizenship']).not.toEqual('Indian')
-})
+  })
 })
