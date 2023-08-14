@@ -17,10 +17,10 @@ export interface TransformerConfig {
 }
 
 export interface EncryptConfig {
-  Key: string
-  Properties: string[]
-  Label: string
-  Seed: string
+  key: string
+  properties: string[]
+  label: string
+  seed: string
 }
 export interface TransformerConfigSample {
   percent: number
@@ -277,15 +277,15 @@ function consumeDigest(digest: number[], arr: number[]) {
 }
 
 function EncryptProperties(payload: any, config: TransformerConfig) {
-  if (!config.encrypt.Key) {
+  if (!config.encrypt.key) {
     throw new Error('public key not present')
   }
 
   encryptWithPublicKey(
-    config.encrypt.Key,
-    config.encrypt.Label,
-    config.encrypt.Properties,
-    config.encrypt.Seed,
+    config.encrypt.key,
+    config.encrypt.label,
+    config.encrypt.properties,
+    config.encrypt.seed,
     payload,
   )
   // Parse the properties back into a JSON object
