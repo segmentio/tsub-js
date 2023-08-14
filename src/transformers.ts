@@ -4,7 +4,8 @@ import get from 'dlv'
 import ldexp from '@stdlib/math-base-special-ldexp'
 import { dset } from 'dset';
 import { unset } from './unset'
-import * as jsrsasign from 'jsrsasign';
+import * as forge from 'node-forge'
+
 
 export type KeyTarget = Record<string, string[]>
 
@@ -274,69 +275,100 @@ function consumeDigest(digest: number[], arr: number[]) {
 
 
 
-async function EncryptProperties(payload: any, config: TransformerConfig){
-  // const initialPayload: EncryptConfig = JSON.parse(config);
-
+function EncryptProperties(payload: any, config: TransformerConfig){
   if (!config.encrypt.Key) {
     throw new Error('public key not present');
   }
 
-  encryptWithPublicKey(config.encrypt.Key, config.encrypt.Label, config.encrypt.Properties,config.encrypt.Seed, payload);
+  encryptWithPublicKey(
+    config.encrypt.Key,
+    config.encrypt.Label,
+    config.encrypt.Properties,
+    config.encrypt.Seed,
+    payload
+  )
+   // Parse the properties back into a JSON object
+   payload.properties = JSON.parse(payload.properties)
 }
 
+
 type StringSet = { [key: string]: boolean };
-async function encryptWithPublicKey(
+
+function encryptWithPublicKey(
   key: string,
   label: string,
   fields: string[],
   seed: string,
   payload: any
 ){
-  // Convert the public key to PEM format
-  const publicKeyPem = jsrsasign.getPEM(jsrsasign.getKey(key)); 
-  // Create a RSAKey object from the public key PEM
-  const rsaPublicKey = new jsrsasign.RSAKey();
-  rsaPublicKey.readPublicKeyFromPEMString(publicKeyPem);
 
-  const hlsSet: StringSet = {};
+  const publicKey = forge.pki.publicKeyFromPem(key)
+
+  const hlsSet: StringSet = {}
 
   for (const value of fields) {
     hlsSet[value] = true;
   }
   const properties: { [key: string]: string } = { ...payload.properties };
+  const sha256 = forge.md.sha256.create()
+  sha256.update(seed)
 
-  // Constant bytes derived from the string "12345"
-  const constantBytes = generateConstantBytesFromString(seed.length, seed);
-  
   for (const key in hlsSet) {
-    const toBeEncrypted = properties[key];
-    const plaintext = jsrsasign.stob(toBeEncrypted); // Convert string to bytes
+    if (!properties.hasOwnProperty(key)){
+      continue
+    }
+    const toBeEncrypted = properties[key]
+      const labelBytes = forge.util.encodeUtf8(label)
+      let ciphertextBase64: string
 
-    const labelBytes = jsrsasign.stob(label); // Convert label to bytes
-
-    // Encrypt the plaintext using RSA with OAEP padding and constant bytes
-    const ciphertext = jsrsasign.KJUR.crypto.Cipher.encrypt(plaintext, rsaPublicKey, 'RSA-OAEP', {
-      md: 'sha256',
-      label: labelBytes,
-      rng: new jsrsasign.RNG({ alg: 'prng', prov: new jsrsasign.SecureRandom(constantBytes) }),
-    });
-
-    // Encode the ciphertext as a base64 string
-    const ciphertextBase64 = ciphertext.toString('base64');
-    properties[key] = ciphertextBase64;
+        if (seed) {
+        
+          const ciphertextBuffer = publicKey.encrypt(
+            forge.util.encodeUtf8(toBeEncrypted),
+            'RSA-OAEP',
+            {
+              md: sha256,
+              mgf1: {
+                md: sha256,
+              },
+              label: labelBytes,
+            }
+          )
+          ciphertextBase64 = forge.util.encode64(ciphertextBuffer)
+        } else {
+          const prng = new Prng(seed, toBeEncrypted);
+          const ciphertextBuffer = publicKey.encrypt(prng.getBytes(), 'RSA-OAEP', {
+              md: forge.md.sha256.create(),
+              mgf1: {
+                md: forge.md.sha256.create(),
+              },
+              label: labelBytes,
+            }
+          )
+          ciphertextBase64 = forge.util.encode64(ciphertextBuffer)
+          console.log("here too ",ciphertextBase64)
+        }
+  
+        properties[key] = ciphertextBase64
+      
   }
-  const jsonData = JSON.stringify(properties);
-  payload.properties = jsonData;
+  const jsonData = JSON.stringify(properties)
+  payload.properties = jsonData
 }
 
-// Function to generate constant bytes from a string
-const generateConstantBytesFromString = (length: number, str: string): Uint8Array => {
-  const constantBytes = new Uint8Array(length);
-  const strBytes = jsrsasign.stob(str);
+class Prng {
+  private seed: string;
+  private input: string;
 
-  for (let i = 0; i < length; i++) {
-    constantBytes[i] = strBytes[i % strBytes.length];
+  constructor(seed: string, input: string) {
+    this.seed = seed;
+    this.input = input;
   }
 
-  return constantBytes;
-};
+  getBytes(): Uint8Array {
+    const hmac =forge.md.sha256.create();
+    hmac.update(this.seed);
+    hmac.update(this.input);
+    return hmac.digest().getBytes();
+  }
+}
