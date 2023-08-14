@@ -456,13 +456,13 @@ describe('encrypt_properties', () => {
   })
 
   it('should encrypt properties with provided public key and seed', () => {
-    const simpleEvent = {
+    const payload = {
       properties: {
         citizenship: 'Indian',
       },
     }
 
-    transform(simpleEvent, [transformer])
-    expect(simpleEvent.properties['citizenship']).not.toEqual('Indian')
+    transform(payload, [transformer])
+    expect(payload.properties['citizenship']).not.toEqual('Indian')
   })
 })
