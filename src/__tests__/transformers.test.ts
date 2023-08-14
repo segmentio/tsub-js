@@ -447,10 +447,10 @@ describe('encrypt_properties', () => {
     transformer.type = 'encrypt_properties'
     transformer.config = {
       encrypt: {
-        Key: '-----BEGIN RSA PUBLIC KEY-----\nMIIBCgKCAQEAoxNilY9QL6OOIfh3laZzihp/0JfOj7sSN/MForSpGVPAAFaKkH8q\nGq+cwmiFRInjROvKJ/S2AwHKbuD1kHzb/c8CUqRdjwPhfajowSlS6QojbtC8BSJs\nFSG23v+5qYoF7GIgZ2klZDsLoLFdHPT/OsqhzzL1ORrIjIWPHbuAO0+oxDICMN68\nT3MMzfAHWs48wbHm7HaeyrOn7ZxbYpbAVpTklPMZOdHc8fJU+5gtZAoLiBTDlGz/\n2H+w62aYrFXE/XpJfg9vFckiz88BCSDUxtpuVZNf+IIk/aFOP+T5iH5a0NDeRa1L\nFm+WjAw98N9zku3lXHa+dS3cG8zlBxq+lwIDAQAB\n-----END RSA PUBLIC KEY-----',
-        Properties: ['citizenship', 'sex', 'phoneNumber'],
-        Label: 'mylabel',
-        Seed: 'myseed',
+        key: '-----BEGIN RSA PUBLIC KEY-----\nMIIBCgKCAQEAoxNilY9QL6OOIfh3laZzihp/0JfOj7sSN/MForSpGVPAAFaKkH8q\nGq+cwmiFRInjROvKJ/S2AwHKbuD1kHzb/c8CUqRdjwPhfajowSlS6QojbtC8BSJs\nFSG23v+5qYoF7GIgZ2klZDsLoLFdHPT/OsqhzzL1ORrIjIWPHbuAO0+oxDICMN68\nT3MMzfAHWs48wbHm7HaeyrOn7ZxbYpbAVpTklPMZOdHc8fJU+5gtZAoLiBTDlGz/\n2H+w62aYrFXE/XpJfg9vFckiz88BCSDUxtpuVZNf+IIk/aFOP+T5iH5a0NDeRa1L\nFm+WjAw98N9zku3lXHa+dS3cG8zlBxq+lwIDAQAB\n-----END RSA PUBLIC KEY-----',
+        properties: ['citizenship', 'sex', 'phoneNumber'],
+        label: 'mylabel',
+        seed: 'myseed',
       },
     }
   })
