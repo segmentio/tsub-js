@@ -346,7 +346,6 @@ function encryptWithPublicKey(
             }
           )
           ciphertextBase64 = forge.util.encode64(ciphertextBuffer)
-          console.log("here too ",ciphertextBase64)
         }
   
         properties[key] = ciphertextBase64
