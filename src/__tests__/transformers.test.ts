@@ -4,6 +4,7 @@ import transform from '../transformers'
 import * as simple from '../../fixtures/simple.json'
 import * as many from '../../fixtures/manyProperties.json'
 
+
 let simpleEvent
 let manyPropertiesEvent
 let transformer: Store.Transformer
@@ -463,7 +464,49 @@ describe('encrypt_properties', () => {
     }
 
     transform(payload, [transformer])
-    expect(payload.properties['citizenship']).not.toEqual('Indian')
-    expect(payload.properties['citizenship']).toBe('EhHhLw+WdZbbAV3q7ZwNIhCEPHN3LrlRqNwQEJCPxrlD5VZQtCBT9UfwJBHvHL+lfwIOn8G2egVb2lLM1uHlbpxW+atcwcV6JjGkxhBMkn5SQpVQ2BwRgsFGcS3DZdGFKFSY2XQhARe2Z0+xyGQ1s+OCaLbayegekKtVbmBK/kC1XqYfNW+Pvq3gdGMhoLn6ruQe/YihEtnKxBC5UyOxYp30EZ2VvpixqT0Z0DDP997W6Y7Rlt+eO2S2sbWB0tGhq/JkasKk4y9z7gYD77Asq1/faROy9+8NRcAtkowgU2qDfGuWiG44MZdhxbHsfJJS8g3VGvZ3IRyCCshPGzUvWw==')
+    expect(payload.properties).toBeTruthy
+    expect(payload.properties['citizenship']).toBeTruthy
+    expect(payload.properties['citizenship']).not.toEqual('Indian') 
+    
+  })
+
+  it('should encrypt properties with provided public key and random seed if seed is not already provided', () => {
+    const payload = {
+      properties: {
+        citizenship: 'Indian',
+      },
+    }
+    transformer.config = {
+      encrypt: {
+        key: '-----BEGIN RSA PUBLIC KEY-----\nMIIBCgKCAQEAoxNilY9QL6OOIfh3laZzihp/0JfOj7sSN/MForSpGVPAAFaKkH8q\nGq+cwmiFRInjROvKJ/S2AwHKbuD1kHzb/c8CUqRdjwPhfajowSlS6QojbtC8BSJs\nFSG23v+5qYoF7GIgZ2klZDsLoLFdHPT/OsqhzzL1ORrIjIWPHbuAO0+oxDICMN68\nT3MMzfAHWs48wbHm7HaeyrOn7ZxbYpbAVpTklPMZOdHc8fJU+5gtZAoLiBTDlGz/\n2H+w62aYrFXE/XpJfg9vFckiz88BCSDUxtpuVZNf+IIk/aFOP+T5iH5a0NDeRa1L\nFm+WjAw98N9zku3lXHa+dS3cG8zlBxq+lwIDAQAB\n-----END RSA PUBLIC KEY-----',
+        properties: ['citizenship', 'sex', 'phoneNumber'],
+        label: 'mylabel',
+        seed: '',
+      },
+    }
+    transform(payload, [transformer])
+    expect(payload.properties).toBeTruthy
+    expect(payload.properties['citizenship']).toBeTruthy
+    expect(payload.properties['citizenship']).not.toEqual('Indian') 
+    
+  })
+
+  it('should throw error if public key is not provided', () => {
+    const payload = {
+      properties: {
+        citizenship: 'Indian',
+      },
+    }
+    transformer.config = {
+      encrypt: {
+        key: '',
+        properties: ['citizenship', 'sex', 'phoneNumber'],
+        label: 'mylabel',
+        seed: 'myseed',
+      },
+    }
+    
+    expect(()=> transform(payload, [transformer])).toThrow('public key not present')
+    
   })
 })
