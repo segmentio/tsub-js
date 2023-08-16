@@ -464,10 +464,9 @@ describe('encrypt_properties', () => {
     }
 
     transform(payload, [transformer])
-    expect(payload.properties).toBeTruthy
-    expect(payload.properties['citizenship']).toBeTruthy
-    expect(payload.properties['citizenship']).not.toEqual('Indian') 
-    
+    expect(payload.properties).toBeTruthy()
+    expect(payload.properties.citizenship).toBeTruthy()
+    expect(payload.properties.citizenship).not.toEqual('Indian')
   })
 
   it('should encrypt properties with provided public key and random seed if seed is not already provided', () => {
@@ -485,10 +484,9 @@ describe('encrypt_properties', () => {
       },
     }
     transform(payload, [transformer])
-    expect(payload.properties).toBeTruthy
-    expect(payload.properties['citizenship']).toBeTruthy
-    expect(payload.properties['citizenship']).not.toEqual('Indian') 
-    
+    expect(payload.properties).toBeTruthy()
+    expect(payload.properties.citizenship).toBeTruthy()
+    expect(payload.properties.citizenship).not.toEqual('Indian')
   })
 
   it('should throw error if public key is not provided', () => {
@@ -505,8 +503,6 @@ describe('encrypt_properties', () => {
         seed: 'myseed',
       },
     }
-    
-    expect(()=> transform(payload, [transformer])).toThrow('public key not present')
-    
+    expect(() => transform(payload, [transformer])).toThrow('public key not present')
   })
 })
