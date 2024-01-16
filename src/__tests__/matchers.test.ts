@@ -1,4 +1,4 @@
-import matches from '../matchers'
+import matches, { generateFQLEval } from '../matchers'
 import * as Store from '../store'
 
 import * as simple from '../../fixtures/simple.json'
@@ -18,7 +18,7 @@ beforeEach(() => {
 
 describe('error handling and basic checks', () => {
   test('throws on a bad IR', () => {
-    ; (matcher.ir = 'Invalid//**[]""""json'),
+    ;(matcher.ir = 'Invalid//**[]""""json'),
       expect(() => {
         matches({}, matcher)
       }).toThrow()
@@ -373,3 +373,37 @@ const matcherTests = [
   ['a[', 'ab', false],
   ['*x', 'xxx', true],
 ]
+
+describe('performance', () => {
+  test('throws on a bad IR', () => {
+    performance.mark('Start')
+    // Initial request
+    matcher.ir = `
+    ["and",
+      ["=", "context.library.name", {"value": "analytics.js"}],
+      ["contains", "context.page.path", {"value": "academy"}],
+      ["or", 
+        ["=", "event", { "value": "Course Not Clicked" }],
+        ["=", "event", { "value": "Course Clicked" }]
+      ],
+      ["=", ["lowercase", "event"], { "value": "course clicked" }],
+      ["match", "context.ip", { "value": "108*" }]
+    ]
+    `
+
+    const evaluator = generateFQLEval(matcher.ir)
+    expect(evaluator(manyPropertiesEvent)).toBe(true)
+
+    performance.measure('First', 'Start')
+    performance.mark('First')
+
+    for (let index = 0; index < 10000; index++) {
+      manyPropertiesEvent.messageId = index
+      expect(evaluator(manyPropertiesEvent)).toBe(true)
+    }
+
+    performance.measure('10000x runs', 'First')
+
+    console.log(performance.getEntries())
+  })
+})
