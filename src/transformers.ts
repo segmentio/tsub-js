@@ -5,9 +5,11 @@ import ldexp from '@stdlib/math-base-special-ldexp'
 import { dset } from 'dset';
 import { unset } from './unset'
 
+export type KeyTarget = Record<string, string[]>
+
 export interface TransformerConfig {
-  allow?: Record<string, string[]>
-  drop?: Record<string, string[]>
+  allow?: KeyTarget
+  drop?: KeyTarget
   sample?: TransformerConfigSample
   map?: Record<string, TransformerConfigMap>
 }
@@ -58,53 +60,43 @@ export default function transform(payload: any, transformers: Transformer[]): an
 
 // dropProperties removes all specified props from the object.
 function dropProperties(payload: any, config: TransformerConfig) {
-  for (const key in config.drop) {
-    if (!config.drop.hasOwnProperty(key)) {
-      continue
-    }
-
-    // If key is empty, it refers to the top-level object.
-    const field = key === '' ? payload : get(payload, key)
-
-    // Can only drop props off of arrays and objects.
-    if (typeof field !== 'object' || field === null) {
-      continue
-    }
-
-    for (const target of config.drop[key]) {
-      delete field[target]
-    }
-  }
+  filterProperties(payload, config.drop, (matchedObj, dropList) => {
+    dropList.forEach(k => delete matchedObj[k])
+  })
 }
 
 // allowProperties ONLY allows the specific targets within the keys. (e.g. "a.foo": ["bar", "baz"]
 // on {a: {foo: {bar: 1, baz: 2}, other: 3}} will not have any drops, as it only looks inside a.foo
 function allowProperties(payload: any, config: TransformerConfig) {
-  for (const key in config.allow) {
-    if (!config.allow.hasOwnProperty(key)) {
-      continue
+  filterProperties(payload, config.allow, (matchedObj, preserveList) => {
+    Object.keys(matchedObj).forEach(key => {
+      if (!preserveList.includes(key)) {
+        delete matchedObj[key]
+      }
+    })
+  })
+}
+
+function filterProperties(payload: any, ruleSet: KeyTarget, filterCb: (matchedObject: any, targets: string[]) => void) {
+  Object.entries(ruleSet).forEach(([key, targets]) => {
+    const filter = (obj: any) => {
+      // Can only act on objects.
+      if (typeof obj !== 'object' || obj === null) {
+        return
+      }
+      
+      filterCb(obj, targets)
     }
 
     // If key is empty, it refers to the top-level object.
-    const field = key === '' ? payload : get(payload, key)
+    const matchedObject = key === '' ? payload : get(payload, key)
 
-    // Can only drop props off of arrays and objects.
-    if (typeof field !== 'object' || field === null) {
-      continue
+    if (Array.isArray(matchedObject)) {
+      matchedObject.forEach(filter)
+    } else {
+      filter(matchedObject)
     }
-
-    // Execution order fortunately doesn't really matter (e.g. if someone filtered off of foo.bar, then foo.bar.baz)
-    // except for micro-optimization.
-    for (const k in field) {
-      if (!field.hasOwnProperty(k)) {
-        continue
-      }
-
-      if (config.allow[key].indexOf(k) === -1) {
-        delete field[k]
-      }
-    }
-  }
+  })
 }
 
 function mapProperties(payload: any, config: TransformerConfig) {
