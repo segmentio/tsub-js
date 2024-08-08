@@ -1077,10 +1077,10 @@
     "@stdlib/number-float64-base-get-high-word" "^0.0.x"
     "@stdlib/number-float64-base-to-words" "^0.0.x"
 
-"@stdlib/math-base-special-ldexp@^0.0.5":
-  version "0.0.5"
-  resolved "https://registry.yarnpkg.com/@stdlib/math-base-special-ldexp/-/math-base-special-ldexp-0.0.5.tgz#df5a1fc0252a6d6cc5f12126af903e7391d78aad"
-  integrity sha512-RLRsPpCdcJZMhwb4l4B/FsmGfEPEWAsik6KYUkUSSHb7ok/gZWt8LgVScxGMpJMpl5IV0v9qG4ZINVONKjX5KA==
+"@stdlib/math-base-special-ldexp@^0.0.8":
+  version "0.0.8"
+  resolved "https://registry.yarnpkg.com/@stdlib/math-base-special-ldexp/-/math-base-special-ldexp-0.0.8.tgz#7bc22b10103f9e69c7200df8bbd2bdec9438beaf"
+  integrity sha512-VTzu2kdgzQT3ebHGtCegKDpTA3RtsUVhb7V3IjAu/dHFLlXPXh5MEuxK/gV4vCpGBW0MKPTO73vwBjo6RT4xUg==
   dependencies:
     "@stdlib/constants-float64-exponent-bias" "^0.0.x"
     "@stdlib/constants-float64-max-base2-exponent" "^0.0.x"
