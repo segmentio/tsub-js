@@ -3,7 +3,9 @@ coverage:
   status:
     project:
       default:
-        informational: true
+        target: 60%
+        informational: false
     patch:
       default:
-        informational: true
+        target: 80%
+        informational: false
