@@ -1,16 +1,20 @@
 import * as Store from './store'
 import get from 'dlv'
 
-export default function matches(event, matcher: Store.Matcher): boolean {
+export default function matches(event: unknown, matcher: Store.Matcher): boolean {
+  return getMatchFunction(matcher)(event)
+}
+
+export function getMatchFunction(matcher: Store.Matcher): (event: unknown) => boolean {
   if (!matcher) {
     throw new Error('No matcher supplied!')
   }
 
   switch (matcher.type) {
     case 'all':
-      return all()
+      return all
     case 'fql':
-      return fql(matcher.ir, event)
+      return fql(matcher.ir)
     default:
       throw new Error(`Matcher of type ${matcher.type} unsupported.`)
   }
@@ -20,9 +24,9 @@ function all(): boolean {
   return true
 }
 
-function fql(ir: Store.Matcher['ir'], event): boolean {
+function fql(ir: Store.Matcher['ir']): (event: unknown) => boolean {
   if (!ir) {
-    return false
+    return () => false
   }
 
   try {
@@ -31,83 +35,150 @@ function fql(ir: Store.Matcher['ir'], event): boolean {
     throw new Error(`Failed to JSON.parse FQL intermediate representation "${ir}": ${e}`)
   }
 
-  const result = fqlEvaluate(ir, event)
-  if (typeof result !== 'boolean') {
-    // An error was returned, or a lowercase, typeof, or similar function was run alone. Nothing to evaluate.
-    return false
+  const evaluator = generateEvaluator(ir)
+  if (typeof evaluator === 'function') {
+    return (event) => !!evaluator(event)
   }
-
-  return result
+  return () => !!evaluator
 }
 
-// FQL is 100% type strict in Go. Show no mercy to types which do not comply.
-function fqlEvaluate(ir, event) {
-  // If the given ir chunk is not an array, then we should check the single given path or value for literally `true`.
-  if (!Array.isArray(ir)) {
-    return getValue(ir, event) === true
+export function generateFQLEval(ir: Store.Matcher['ir']): (event: unknown) => boolean {
+  if (!ir) {
+    return () => false
   }
 
-  // Otherwise, it is a sequence of ordered steps to follow to reach our solution!
+  try {
+    ir = JSON.parse(ir)
+  } catch (e) {
+    throw new Error(`Failed to JSON.parse FQL intermediate representation "${ir}": ${e}`)
+  }
+
+  const evaluator = generateEvaluator(ir)
+  if (typeof evaluator === 'function') {
+    return (event) => !!evaluator(event)
+  }
+  return () => !!evaluator
+}
+
+type FQLEvaluator =
+  | ((event: any) => boolean)
+  | ((event: any) => string)
+  | ((event: any) => number)
+  | string
+  | number
+  | boolean
+  | Array<String | boolean | number>
+
+// Creates a function for evaluating a given FQL
+function generateEvaluator(ir: string | string[]): FQLEvaluator {
+  // If the given ir chunk is not an array, then we should check the single given path or value for literally `true`.
+  if (!Array.isArray(ir)) {
+    return (event: any) => getValue(ir, event) === true
+  }
+
   const item = ir[0]
+
   switch (item) {
     /*** Unary cases ***/
     // '!' => Invert the result
     case '!':
-      return !fqlEvaluate(ir[1], event)
-
+      const op = generateEvaluator(ir[1])
+      if (typeof op === 'function') {
+        return (event: any) => {
+          return !op(event)
+        }
+      } else {
+        return !op
+      }
     /*** Binary cases ***/
     // 'or' => Any condition being true returns true
     case 'or':
+      const orOps: FQLEvaluator[] = []
       for (let i = 1; i < ir.length; i++) {
-        if (fqlEvaluate(ir[i], event)) {
-          return true
-        }
+        orOps.push(generateEvaluator(ir[i]))
       }
-      return false
+      return (event: any) => {
+        for (const op of orOps) {
+          if (typeof op === 'function') {
+            if (op(event)) {
+              return true
+            }
+          } else {
+            if (op) return true
+          }
+        }
+        return false
+      }
+
     // 'and' => Any condition being false returns false
     case 'and':
+      const andOps: FQLEvaluator[] = []
       for (let i = 1; i < ir.length; i++) {
-        if (!fqlEvaluate(ir[i], event)) {
-          return false
-        }
+        andOps.push(generateEvaluator(ir[i]))
       }
-      return true
+      return (event: any) => {
+        for (const op of andOps) {
+          if (typeof op === 'function') {
+            if (!op(event)) {
+              return false
+            }
+          } else {
+            if (!op) {
+              return false
+            }
+          }
+        }
+        return true
+      }
+
     // Equivalence comparisons
     case '=':
     case '!=':
-      return compareItems(getValue(ir[1], event), getValue(ir[2], event), item, event)
+      return compareItemsGenerator(ir[1], ir[2], item)
     // Numerical comparisons
     case '<=':
     case '<':
     case '>':
     case '>=':
       // Compare the two values with the given operator.
-      return compareNumbers(getValue(ir[1], event), getValue(ir[2], event), item, event)
+      return compareNumbersGenerator(ir[1], ir[2], item)
     // item in [list]' => Checks whether item is in list
     case 'in':
-      return checkInList(getValue(ir[1], event), getValue(ir[2], event), event)
+      return (event) => {
+        return checkInList(getValue(ir[1], event), getValue(ir[2], event), event)
+      }
 
     /*** Functions ***/
     // 'contains(str1, str2)' => The first string has a substring of the second string
     case 'contains':
-      return contains(getValue(ir[1], event), getValue(ir[2], event))
+      return (event) => {
+        return contains(getValue(ir[1], event), getValue(ir[2], event))
+      }
     // 'match(str, match)' => The given string matches the provided glob matcher
     case 'match':
-      return match(getValue(ir[1], event), getValue(ir[2], event))
+      return (event) => {
+        return match(getValue(ir[1], event), getValue(ir[2], event))
+      }
     // 'lowercase(str)' => Returns a lowercased string, null if the item is not a string
     case 'lowercase':
-      const target = getValue(ir[1], event)
-      if (typeof target !== 'string') {
-        return null
+      return (event) => {
+        const target = getValue(ir[1], event)
+        if (typeof target !== 'string') {
+          return null
+        }
+        return target.toLowerCase()
       }
-      return target.toLowerCase()
     // 'typeof(val)' => Returns the FQL type of the value
     case 'typeof':
       // TODO: Do we need mapping to allow for universal comparisons? e.g. Object -> JSON, Array -> List, Floats?
-      return typeof getValue(ir[1], event)
+      return (event) => {
+        return typeof getValue(ir[1], event)
+      }
     // 'length(val)' => Returns the length of an array or string, NaN if neither
     case 'length':
-      return length(getValue(ir[1], event))
+      return (event) => {
+        return length(getValue(ir[1], event))
+      }
     // If nothing hit, we or the IR messed up somewhere.
     default:
       throw new Error(`FQL IR could not evaluate for token: ${item}`)
@@ -130,70 +201,144 @@ function getValue(item, event) {
 }
 
 function checkInList(item, list, event): boolean {
-  return list.find(it => getValue(it, event) === item) !== undefined
+  return list.find((it) => getValue(it, event) === item) !== undefined
 }
 
-function compareNumbers(first, second, operator, event): boolean {
+function compareNumbersGenerator(first, second, operator): (event) => boolean {
   // Check if it's more IR (such as a length() function)
-  if (isIR(first)) {
-    first = fqlEvaluate(first, event)
+  let firstEval: FQLEvaluator
+  let secondEval: FQLEvaluator
+
+  if (!isStatic(first)) {
+    if (isIR(first)) {
+      firstEval = generateEvaluator(first)
+    } else {
+      firstEval = (event) => getValue(first, event)
+    }
+  } else {
+    firstEval = first.value
   }
 
-  if (isIR(second)) {
-    second = fqlEvaluate(second, event)
-  }
-
-  if (typeof first !== 'number' || typeof second !== 'number') {
-    return false
+  if (!isStatic(second)) {
+    if (isIR(second)) {
+      secondEval = generateEvaluator(second)
+    } else {
+      secondEval = (event) => getValue(second, event)
+    }
+  } else {
+    secondEval = second.value
   }
 
   // Reminder: NaN is not comparable to any other number (including NaN) and will always return false as desired.
+  let op: (a: number, b: number) => boolean
   switch (operator) {
     // '<=' => The first number is less than or equal to the second.
     case '<=':
-      return first <= second
+      op = (a, b) => a <= b
+      break
     // '>=' => The first number is greater than or equal to the second
     case '>=':
-      return first >= second
+      op = (a, b) => a >= b
+      break
     // '<' The first number is less than the second.
     case '<':
-      return first < second
+      op = (a, b) => a < b
+      break
     // '>' The first number is greater than the second.
     case '>':
-      return first > second
+      op = (a, b) => a > b
+      break
     default:
       throw new Error(`Invalid operator in compareNumbers: ${operator}`)
   }
+
+  return (event) => {
+    let a, b
+
+    if (typeof firstEval === 'function') {
+      a = firstEval(event)
+    } else {
+      a = firstEval
+    }
+
+    if (typeof secondEval === 'function') {
+      b = secondEval(event)
+    } else {
+      b = secondEval
+    }
+
+    if (typeof a !== 'number' || typeof b !== 'number') {
+      return false
+    }
+
+    return op(a, b)
+  }
 }
 
-function compareItems(first, second, operator, event): boolean {
+function compareItemsGenerator(first, second, operator): FQLEvaluator {
+  let firstEval: FQLEvaluator
+  let secondEval: FQLEvaluator
+
   // Check if it's more IR (such as a lowercase() function)
-  if (isIR(first)) {
-    first = fqlEvaluate(first, event)
+  if (!isStatic(first)) {
+    if (isIR(first)) {
+      firstEval = generateEvaluator(first)
+    } else {
+      firstEval = (event) => getValue(first, event)
+    }
+  } else {
+    firstEval = first.value
   }
 
-  if (isIR(second)) {
-    second = fqlEvaluate(second, event)
-  }
-
-  if (typeof first === 'object' && typeof second === 'object') {
-    first = JSON.stringify(first)
-    second = JSON.stringify(second)
+  if (!isStatic(second)) {
+    if (isIR(second)) {
+      secondEval = generateEvaluator(second)
+    } else {
+      secondEval = (event) => getValue(second, event)
+    }
+  } else {
+    secondEval = second.value
   }
 
   // Objects with the exact same contents AND order ARE considered identical. (Don't compare by reference)
   // Even in Go, this MUST be the same byte order.
   // e.g. {a: 1, b:2} === {a: 1, b:2} BUT {a:1, b:2} !== {b:2, a:1}
   // Maybe later we'll use a stable stringifier, but we're matching server-side behavior for now.
+  let compareOp: (a: unknown, b: unknown) => boolean
   switch (operator) {
     // '=' => The two following items are exactly identical
     case '=':
-      return first === second
+      compareOp = (a, b) => a === b
+      break
     // '!=' => The two following items are NOT exactly identical.
     case '!=':
-      return first !== second
+      compareOp = (a, b) => a !== b
+      break
     default:
       throw new Error(`Invalid operator in compareItems: ${operator}`)
+  }
+
+  return (event) => {
+    let a, b
+
+    if (typeof firstEval === 'function') {
+      a = firstEval(event)
+    } else {
+      a = firstEval
+    }
+
+    if (typeof secondEval === 'function') {
+      b = secondEval(event)
+    } else {
+      b = secondEval
+    }
+
+    if (typeof a === 'object' && typeof b === 'object') {
+      a = JSON.stringify(a)
+      b = JSON.stringify(b)
+    }
+
+    return compareOp(a, b)
   }
 }
 
@@ -248,6 +393,14 @@ function isIR(value): boolean {
   }
 
   return false
+}
+
+function isStatic(ir: Store.Matcher | string): boolean {
+  if (Array.isArray(ir) || typeof ir !== 'object') {
+    return false
+  }
+
+  return true
 }
 
 // Any reputable glob matcher is designed to work on filesystems and doesn't allow the override of the separator
