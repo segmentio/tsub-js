@@ -2,8 +2,9 @@ import { Transformer } from './store'
 import MD5 from 'tiny-hashes/md5'
 import get from 'dlv'
 import ldexp from '@stdlib/math-base-special-ldexp'
-import { dset } from 'dset';
+import { dset } from 'dset'
 import { unset } from './unset'
+import * as forge from 'node-forge'
 
 export type KeyTarget = Record<string, string[]>
 
@@ -12,8 +13,15 @@ export interface TransformerConfig {
   drop?: KeyTarget
   sample?: TransformerConfigSample
   map?: Record<string, TransformerConfigMap>
+  encrypt?: EncryptConfig
 }
 
+export interface EncryptConfig {
+  key: string
+  properties: string[]
+  label: string
+  seed: string
+}
 export interface TransformerConfigSample {
   percent: number
   path: string
@@ -50,6 +58,9 @@ export default function transform(payload: any, transformers: Transformer[]): an
       case 'hash_properties':
         // Not yet supported, but don't throw an error. Just ignore.
         break
+      case 'encrypt_properties':
+        EncryptProperties(transformedPayload, transformer.config)
+        break
       default:
         throw new Error(`Transformer of type "${transformer.type}" is unsupported.`)
     }
@@ -61,7 +72,7 @@ export default function transform(payload: any, transformers: Transformer[]): an
 // dropProperties removes all specified props from the object.
 function dropProperties(payload: any, config: TransformerConfig) {
   filterProperties(payload, config.drop, (matchedObj, dropList) => {
-    dropList.forEach(k => delete matchedObj[k])
+    dropList.forEach((k) => delete matchedObj[k])
   })
 }
 
@@ -69,7 +80,7 @@ function dropProperties(payload: any, config: TransformerConfig) {
 // on {a: {foo: {bar: 1, baz: 2}, other: 3}} will not have any drops, as it only looks inside a.foo
 function allowProperties(payload: any, config: TransformerConfig) {
   filterProperties(payload, config.allow, (matchedObj, preserveList) => {
-    Object.keys(matchedObj).forEach(key => {
+    Object.keys(matchedObj).forEach((key) => {
       if (!preserveList.includes(key)) {
         delete matchedObj[key]
       }
@@ -77,14 +88,18 @@ function allowProperties(payload: any, config: TransformerConfig) {
   })
 }
 
-function filterProperties(payload: any, ruleSet: KeyTarget, filterCb: (matchedObject: any, targets: string[]) => void) {
+function filterProperties(
+  payload: any,
+  ruleSet: KeyTarget,
+  filterCb: (matchedObject: any, targets: string[]) => void,
+) {
   Object.entries(ruleSet).forEach(([key, targets]) => {
     const filter = (obj: any) => {
       // Can only act on objects.
       if (typeof obj !== 'object' || obj === null) {
         return
       }
-      
+
       filterCb(obj, targets)
     }
 
@@ -258,5 +273,93 @@ function consumeDigest(digest: number[], arr: number[]) {
         arr.push(0)
       }
     }
+  }
+}
+
+function EncryptProperties(payload: any, config: TransformerConfig) {
+  if (!config.encrypt.key) {
+    throw new Error('public key not present')
+  }
+
+  encryptWithPublicKey(
+    config.encrypt.key,
+    config.encrypt.label,
+    config.encrypt.properties,
+    config.encrypt.seed,
+    payload,
+  )
+  // Parse the properties back into a JSON object
+  payload.properties = JSON.parse(payload.properties)
+}
+
+type StringSet = { [key: string]: boolean }
+
+function encryptWithPublicKey(
+  key: string,
+  label: string,
+  fields: string[],
+  seed: string,
+  payload: any,
+) {
+  const publicKey = forge.pki.publicKeyFromPem(key)
+
+  const hlsSet: StringSet = {}
+
+  for (const value of fields) {
+    hlsSet[value] = true
+  }
+  const properties: { [key: string]: string } = { ...payload.properties }
+  const sha256 = forge.md.sha256.create()
+  sha256.update(seed)
+
+  for (const key in hlsSet) {
+    if (!properties.hasOwnProperty(key)) {
+      continue
+    }
+    const toBeEncrypted = properties[key]
+    const labelBytes = forge.util.encodeUtf8(label)
+    let ciphertextBase64: string
+
+    if (seed) {
+      const ciphertextBuffer = publicKey.encrypt(forge.util.encodeUtf8(toBeEncrypted), 'RSA-OAEP', {
+        md: sha256,
+        mgf1: {
+          md: sha256,
+        },
+        label: labelBytes,
+      })
+      ciphertextBase64 = forge.util.encode64(ciphertextBuffer)
+    } else {
+      const prng = new Prng(seed, toBeEncrypted)
+      const ciphertextBuffer = publicKey.encrypt(prng.getBytes(), 'RSA-OAEP', {
+        md: forge.md.sha256.create(),
+        mgf1: {
+          md: forge.md.sha256.create(),
+        },
+        label: labelBytes,
+      })
+      ciphertextBase64 = forge.util.encode64(ciphertextBuffer)
+    }
+
+    properties[key] = ciphertextBase64
+  }
+  const jsonData = JSON.stringify(properties)
+  payload.properties = jsonData
+}
+
+class Prng {
+  private seed: string
+  private input: string
+
+  constructor(seed: string, input: string) {
+    this.seed = seed
+    this.input = input
+  }
+
+  getBytes(): Uint8Array {
+    const hmac = forge.md.sha256.create()
+    hmac.update(this.seed)
+    hmac.update(this.input)
+    return hmac.digest().getBytes()
   }
 }

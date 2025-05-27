@@ -4,6 +4,7 @@ import transform from '../transformers'
 import * as simple from '../../fixtures/simple.json'
 import * as many from '../../fixtures/manyProperties.json'
 
+
 let simpleEvent
 let manyPropertiesEvent
 let transformer: Store.Transformer
@@ -106,17 +107,14 @@ describe('drop_properties', () => {
     simpleEvent.properties = {
       product: [
         { id: 875134, category: 'Clothing' },
-        { id: 875135, category: 'Sports' }
-      ]
+        { id: 875135, category: 'Sports' },
+      ],
     }
     transformer.config = { drop: { 'properties.product': ['category'] } }
 
     transform(simpleEvent, [transformer])
     expect(simpleEvent.properties).toStrictEqual({
-      product: [
-        { id: 875134 },
-        { id: 875135 }
-      ]
+      product: [{ id: 875134 }, { id: 875135 }],
     })
   })
 
@@ -182,17 +180,14 @@ describe('allow_properties', () => {
     simpleEvent.properties = {
       product: [
         { id: 875134, category: 'Clothing' },
-        { id: 875135, category: 'Sports' }
-      ]
+        { id: 875135, category: 'Sports' },
+      ],
     }
     transformer.config = { allow: { 'properties.product': ['id'] } }
 
     transform(simpleEvent, [transformer])
     expect(simpleEvent.properties).toStrictEqual({
-      product: [
-        { id: 875134 },
-        { id: 875135 }
-      ]
+      product: [{ id: 875134 }, { id: 875135 }],
     })
   })
 
@@ -445,5 +440,69 @@ describe('map_properties', () => {
     simpleEvent.mapMe = false
     transform(simpleEvent, [transformer])
     expect(simpleEvent.mapMe).toBe('false')
+  })
+})
+
+describe('encrypt_properties', () => {
+  beforeEach(() => {
+    transformer.type = 'encrypt_properties'
+    transformer.config = {
+      encrypt: {
+        key: '-----BEGIN RSA PUBLIC KEY-----\nMIIBCgKCAQEAoxNilY9QL6OOIfh3laZzihp/0JfOj7sSN/MForSpGVPAAFaKkH8q\nGq+cwmiFRInjROvKJ/S2AwHKbuD1kHzb/c8CUqRdjwPhfajowSlS6QojbtC8BSJs\nFSG23v+5qYoF7GIgZ2klZDsLoLFdHPT/OsqhzzL1ORrIjIWPHbuAO0+oxDICMN68\nT3MMzfAHWs48wbHm7HaeyrOn7ZxbYpbAVpTklPMZOdHc8fJU+5gtZAoLiBTDlGz/\n2H+w62aYrFXE/XpJfg9vFckiz88BCSDUxtpuVZNf+IIk/aFOP+T5iH5a0NDeRa1L\nFm+WjAw98N9zku3lXHa+dS3cG8zlBxq+lwIDAQAB\n-----END RSA PUBLIC KEY-----',
+        properties: ['citizenship', 'sex', 'phoneNumber'],
+        label: 'mylabel',
+        seed: 'myseed',
+      },
+    }
+  })
+
+  it('should encrypt properties with provided public key and seed', () => {
+    const payload = {
+      properties: {
+        citizenship: 'Indian',
+      },
+    }
+
+    transform(payload, [transformer])
+    expect(payload.properties).toBeTruthy()
+    expect(payload.properties.citizenship).toBeTruthy()
+    expect(payload.properties.citizenship).not.toEqual('Indian')
+  })
+
+  it('should encrypt properties with provided public key and random seed if seed is not already provided', () => {
+    const payload = {
+      properties: {
+        citizenship: 'Indian',
+      },
+    }
+    transformer.config = {
+      encrypt: {
+        key: '-----BEGIN RSA PUBLIC KEY-----\nMIIBCgKCAQEAoxNilY9QL6OOIfh3laZzihp/0JfOj7sSN/MForSpGVPAAFaKkH8q\nGq+cwmiFRInjROvKJ/S2AwHKbuD1kHzb/c8CUqRdjwPhfajowSlS6QojbtC8BSJs\nFSG23v+5qYoF7GIgZ2klZDsLoLFdHPT/OsqhzzL1ORrIjIWPHbuAO0+oxDICMN68\nT3MMzfAHWs48wbHm7HaeyrOn7ZxbYpbAVpTklPMZOdHc8fJU+5gtZAoLiBTDlGz/\n2H+w62aYrFXE/XpJfg9vFckiz88BCSDUxtpuVZNf+IIk/aFOP+T5iH5a0NDeRa1L\nFm+WjAw98N9zku3lXHa+dS3cG8zlBxq+lwIDAQAB\n-----END RSA PUBLIC KEY-----',
+        properties: ['citizenship', 'sex', 'phoneNumber'],
+        label: 'mylabel',
+        seed: '',
+      },
+    }
+    transform(payload, [transformer])
+    expect(payload.properties).toBeTruthy()
+    expect(payload.properties.citizenship).toBeTruthy()
+    expect(payload.properties.citizenship).not.toEqual('Indian')
+  })
+
+  it('should throw error if public key is not provided', () => {
+    const payload = {
+      properties: {
+        citizenship: 'Indian',
+      },
+    }
+    transformer.config = {
+      encrypt: {
+        key: '',
+        properties: ['citizenship', 'sex', 'phoneNumber'],
+        label: 'mylabel',
+        seed: 'myseed',
+      },
+    }
+    expect(() => transform(payload, [transformer])).toThrow('public key not present')
   })
 })
