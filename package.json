@@ -8,6 +8,7 @@
   "scripts": {
     "test": "jest",
     "build": "rm -rf dist && tsc",
+    "prepare": "npm run build",
     "lint": "tslint src/**/*.ts",
     "lint_test": "tslint src/**/*.test.ts"
   },
