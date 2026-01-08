@@ -154,6 +154,154 @@ describe('functions', () => {
       matches({}, matcher)
     }).toThrow()
   })
+
+  describe('semver()', () => {
+    test('basic >= comparison works', () => {
+      // FQL: semver("1.0.1", ">=", "1.0.0")
+      matcher.ir = `["semver", {"value": "1.0.1"}, {"value": ">="}, {"value": "1.0.0"}]`
+      expect(matches({}, matcher)).toBe(true)
+
+      // FQL: semver("1.0.0", ">=", "1.0.0")
+      matcher.ir = `["semver", {"value": "1.0.0"}, {"value": ">="}, {"value": "1.0.0"}]`
+      expect(matches({}, matcher)).toBe(true)
+
+      // FQL: semver("0.9.9", ">=", "1.0.0")
+      matcher.ir = `["semver", {"value": "0.9.9"}, {"value": ">="}, {"value": "1.0.0"}]`
+      expect(matches({}, matcher)).toBe(false)
+    })
+
+    test('> comparison works', () => {
+      // FQL: semver("2.0.0", ">", "1.9.9")
+      matcher.ir = `["semver", {"value": "2.0.0"}, {"value": ">"}, {"value": "1.9.9"}]`
+      expect(matches({}, matcher)).toBe(true)
+
+      // FQL: semver("1.0.0", ">", "1.0.0")
+      matcher.ir = `["semver", {"value": "1.0.0"}, {"value": ">"}, {"value": "1.0.0"}]`
+      expect(matches({}, matcher)).toBe(false)
+    })
+
+    test('< comparison works', () => {
+      // FQL: semver("1.5.0", "<", "2.0.0")
+      matcher.ir = `["semver", {"value": "1.5.0"}, {"value": "<"}, {"value": "2.0.0"}]`
+      expect(matches({}, matcher)).toBe(true)
+
+      // FQL: semver("2.0.0", "<", "2.0.0")
+      matcher.ir = `["semver", {"value": "2.0.0"}, {"value": "<"}, {"value": "2.0.0"}]`
+      expect(matches({}, matcher)).toBe(false)
+    })
+
+    test('<= comparison works', () => {
+      // FQL: semver("1.0.0", "<=", "1.0.0")
+      matcher.ir = `["semver", {"value": "1.0.0"}, {"value": "<="}, {"value": "1.0.0"}]`
+      expect(matches({}, matcher)).toBe(true)
+
+      // FQL: semver("1.0.1", "<=", "1.0.0")
+      matcher.ir = `["semver", {"value": "1.0.1"}, {"value": "<="}, {"value": "1.0.0"}]`
+      expect(matches({}, matcher)).toBe(false)
+    })
+
+    test('= comparison works', () => {
+      // FQL: semver("1.2.3", "=", "1.2.3")
+      matcher.ir = `["semver", {"value": "1.2.3"}, {"value": "="}, {"value": "1.2.3"}]`
+      expect(matches({}, matcher)).toBe(true)
+
+      // FQL: semver("1.2.3", "=", "1.2.4")
+      matcher.ir = `["semver", {"value": "1.2.3"}, {"value": "="}, {"value": "1.2.4"}]`
+      expect(matches({}, matcher)).toBe(false)
+    })
+
+    test('!= comparison works', () => {
+      // FQL: semver("1.2.3", "!=", "1.2.4")
+      matcher.ir = `["semver", {"value": "1.2.3"}, {"value": "!="}, {"value": "1.2.4"}]`
+      expect(matches({}, matcher)).toBe(true)
+
+      // FQL: semver("1.2.3", "!=", "1.2.3")
+      matcher.ir = `["semver", {"value": "1.2.3"}, {"value": "!="}, {"value": "1.2.3"}]`
+      expect(matches({}, matcher)).toBe(false)
+    })
+
+    test('partial versions work', () => {
+      // FQL: semver("2", ">", "1.9.9")
+      matcher.ir = `["semver", {"value": "2"}, {"value": ">"}, {"value": "1.9.9"}]`
+      expect(matches({}, matcher)).toBe(true)
+
+      // FQL: semver("1.5", ">", "1.4.9")
+      matcher.ir = `["semver", {"value": "1.5"}, {"value": ">"}, {"value": "1.4.9"}]`
+      expect(matches({}, matcher)).toBe(true)
+
+      // FQL: semver("1.5", "=", "1.5.0")
+      matcher.ir = `["semver", {"value": "1.5"}, {"value": "="}, {"value": "1.5.0"}]`
+      expect(matches({}, matcher)).toBe(true)
+
+      // FQL: semver("2.0", "=", "2")
+      matcher.ir = `["semver", {"value": "2.0"}, {"value": "="}, {"value": "2"}]`
+      expect(matches({}, matcher)).toBe(true)
+    })
+
+    test('version precedence works correctly', () => {
+      // Major version takes precedence
+      // FQL: semver("2.0.0", ">", "1.99.99")
+      matcher.ir = `["semver", {"value": "2.0.0"}, {"value": ">"}, {"value": "1.99.99"}]`
+      expect(matches({}, matcher)).toBe(true)
+
+      // Minor version takes precedence
+      // FQL: semver("1.10.0", ">", "1.9.0")
+      matcher.ir = `["semver", {"value": "1.10.0"}, {"value": ">"}, {"value": "1.9.0"}]`
+      expect(matches({}, matcher)).toBe(true)
+
+      // Patch version comparison
+      // FQL: semver("1.0.10", ">", "1.0.9")
+      matcher.ir = `["semver", {"value": "1.0.10"}, {"value": ">"}, {"value": "1.0.9"}]`
+      expect(matches({}, matcher)).toBe(true)
+    })
+
+    test('null handling works', () => {
+      // FQL: semver(null, ">=", "1.0.0")
+      matcher.ir = `["semver", {"value": null}, {"value": ">="}, {"value": "1.0.0"}]`
+      expect(matches({}, matcher)).toBe(false)
+
+      // FQL: semver("1.0.0", ">=", null)
+      matcher.ir = `["semver", {"value": "1.0.0"}, {"value": ">="}, {"value": null}]`
+      expect(matches({}, matcher)).toBe(false)
+    })
+
+    test('invalid inputs return false', () => {
+      // Invalid version format
+      // FQL: semver("invalid", ">=", "1.0.0")
+      matcher.ir = `["semver", {"value": "invalid"}, {"value": ">="}, {"value": "1.0.0"}]`
+      expect(matches({}, matcher)).toBe(false)
+
+      // Invalid version format
+      // FQL: semver("1.0.0", ">=", "invalid")
+      matcher.ir = `["semver", {"value": "1.0.0"}, {"value": ">="}, {"value": "invalid"}]`
+      expect(matches({}, matcher)).toBe(false)
+
+      // Invalid operator
+      // FQL: semver("1.0.0", "~=", "1.0.0")
+      matcher.ir = `["semver", {"value": "1.0.0"}, {"value": "~="}, {"value": "1.0.0"}]`
+      expect(matches({}, matcher)).toBe(false)
+
+      // Too many parts
+      // FQL: semver("1.2.3.4", ">=", "1.0.0")
+      matcher.ir = `["semver", {"value": "1.2.3.4"}, {"value": ">="}, {"value": "1.0.0"}]`
+      expect(matches({}, matcher)).toBe(false)
+
+      // Non-numeric parts
+      // FQL: semver("1.a.0", ">=", "1.0.0")
+      matcher.ir = `["semver", {"value": "1.a.0"}, {"value": ">="}, {"value": "1.0.0"}]`
+      expect(matches({}, matcher)).toBe(false)
+    })
+
+    test('works with event properties', () => {
+      // FQL: semver(app_version, ">=", "1.0.0")
+      matcher.ir = `["semver", "app_version", {"value": ">="}, {"value": "1.0.0"}]`
+      simpleEvent.app_version = '1.5.0'
+      expect(matches(simpleEvent, matcher)).toBe(true)
+
+      simpleEvent.app_version = '0.9.0'
+      expect(matches(simpleEvent, matcher)).toBe(false)
+    })
+  })
 })
 
 describe('arrays', () => {

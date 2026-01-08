@@ -108,6 +108,9 @@ function fqlEvaluate(ir, event) {
     // 'length(val)' => Returns the length of an array or string, NaN if neither
     case 'length':
       return length(getValue(ir[1], event))
+    // 'semver(version, operator, version)' => Compares semantic versions
+    case 'semver':
+      return semver(getValue(ir[1], event), getValue(ir[2], event), getValue(ir[3], event))
     // If nothing hit, we or the IR messed up somewhere.
     default:
       throw new Error(`FQL IR could not evaluate for token: ${item}`)
@@ -227,6 +230,117 @@ function length(item) {
   return item.length
 }
 
+interface SemverVersion {
+  major: number
+  minor: number
+  patch: number
+}
+
+// semver performs semantic version comparison. It takes 3 arguments:
+// 1. version string (e.g. "1.0.1")
+// 2. operator (e.g. ">=", ">", "=", "!=", "<", "<=")
+// 3. version string to compare against (e.g. "1.0.0")
+// Returns true if the comparison is satisfied, false otherwise.
+function semver(v1Str, operator, v2Str): boolean {
+  // Handle null values
+  if (v1Str === null || v2Str === null) {
+    return false
+  }
+
+  // Type check
+  if (typeof v1Str !== 'string' || typeof operator !== 'string' || typeof v2Str !== 'string') {
+    return false
+  }
+
+  let v1: SemverVersion
+  let v2: SemverVersion
+
+  try {
+    v1 = parseSemver(v1Str)
+    v2 = parseSemver(v2Str)
+  } catch (e) {
+    return false
+  }
+
+  const cmp = compareSemver(v1, v2)
+
+  switch (operator) {
+    case '=':
+      return cmp === 0
+    case '!=':
+      return cmp !== 0
+    case '>':
+      return cmp > 0
+    case '>=':
+      return cmp >= 0
+    case '<':
+      return cmp < 0
+    case '<=':
+      return cmp <= 0
+    default:
+      return false
+  }
+}
+
+// parseSemver parses a semantic version string like "1.2.3" or "1.0" or "2"
+function parseSemver(version: string): SemverVersion {
+  const DECIMAL_RADIX = 10
+  const parts = version.split('.')
+  if (parts.length === 0 || parts.length > 3) {
+    throw new Error('invalid version format')
+  }
+
+  const v: SemverVersion = {
+    major: 0,
+    minor: 0,
+    patch: 0,
+  }
+
+  // Parse major version
+  if (parts.length >= 1) {
+    v.major = parseInt(parts[0].trim(), DECIMAL_RADIX)
+    if (isNaN(v.major)) {
+      throw new Error('invalid major version')
+    }
+  }
+
+  // Parse minor version (defaults to 0)
+  if (parts.length >= 2) {
+    v.minor = parseInt(parts[1].trim(), DECIMAL_RADIX)
+    if (isNaN(v.minor)) {
+      throw new Error('invalid minor version')
+    }
+  }
+
+  // Parse patch version (defaults to 0)
+  if (parts.length >= 3) {
+    v.patch = parseInt(parts[2].trim(), DECIMAL_RADIX)
+    if (isNaN(v.patch)) {
+      throw new Error('invalid patch version')
+    }
+  }
+
+  return v
+}
+
+// compareSemver compares two semantic versions
+// Returns: -1 if v1 < v2, 0 if v1 == v2, 1 if v1 > v2
+function compareSemver(v1: SemverVersion, v2: SemverVersion): number {
+  if (v1.major !== v2.major) {
+    return v1.major < v2.major ? -1 : 1
+  }
+
+  if (v1.minor !== v2.minor) {
+    return v1.minor < v2.minor ? -1 : 1
+  }
+
+  if (v1.patch !== v2.patch) {
+    return v1.patch < v2.patch ? -1 : 1
+  }
+
+  return 0
+}
+
 // This is a heuristic technically speaking, but should be close enough. The odds of someone trying to test
 // a func with identical IR notation is pretty low.
 function isIR(value): boolean {
@@ -244,6 +358,10 @@ function isIR(value): boolean {
   }
 
   if ((value[0] === 'contains' || value[0] === 'match') && value.length === 3) {
+    return true
+  }
+
+  if (value[0] === 'semver' && value.length === 4) {
     return true
   }
 
