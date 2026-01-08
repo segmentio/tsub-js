@@ -284,6 +284,7 @@ function semver(v1Str, operator, v2Str): boolean {
 
 // parseSemver parses a semantic version string like "1.2.3" or "1.0" or "2"
 function parseSemver(version: string): SemverVersion {
+  const DECIMAL_RADIX = 10
   const parts = version.split('.')
   if (parts.length === 0 || parts.length > 3) {
     throw new Error('invalid version format')
@@ -297,7 +298,7 @@ function parseSemver(version: string): SemverVersion {
 
   // Parse major version
   if (parts.length >= 1) {
-    v.major = parseInt(parts[0].trim(), 10)
+    v.major = parseInt(parts[0].trim(), DECIMAL_RADIX)
     if (isNaN(v.major)) {
       throw new Error('invalid major version')
     }
@@ -305,7 +306,7 @@ function parseSemver(version: string): SemverVersion {
 
   // Parse minor version (defaults to 0)
   if (parts.length >= 2) {
-    v.minor = parseInt(parts[1].trim(), 10)
+    v.minor = parseInt(parts[1].trim(), DECIMAL_RADIX)
     if (isNaN(v.minor)) {
       throw new Error('invalid minor version')
     }
@@ -313,7 +314,7 @@ function parseSemver(version: string): SemverVersion {
 
   // Parse patch version (defaults to 0)
   if (parts.length >= 3) {
-    v.patch = parseInt(parts[2].trim(), 10)
+    v.patch = parseInt(parts[2].trim(), DECIMAL_RADIX)
     if (isNaN(v.patch)) {
       throw new Error('invalid patch version')
     }
